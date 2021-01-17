@@ -2,17 +2,19 @@ package chess;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.application.HostServices;
 
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.TilePane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.Rectangle;
-
+import javafx.scene.image.*;
 
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Button;
@@ -20,6 +22,8 @@ import javafx.event.ActionEvent;
 
 // visuals
 import javafx.geometry.Pos;
+import javafx.geometry.HPos;
+import javafx.geometry.Insets;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.paint.Color;
@@ -29,14 +33,75 @@ import javafx.scene.paint.Color;
  */
 public class App extends Application {
 
+    final int squareSize = 50;
+    final Font defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
+    final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
+
+    private GridPane makeCaptured(boolean isBlack) {
+        int small = 30;
+        var grid = new GridPane();
+        grid.setAlignment(Pos.CENTER);
+        var suff = isBlack ? "_black" : "_white";
+        var Queen = new ImageView(
+                new Image(getClass().getResourceAsStream("/icons/QUEEN" + suff + ".png"), small, small, false, false));
+        var Rook = new ImageView(
+                new Image(getClass().getResourceAsStream("/icons/ROOK" + suff + ".png"), small, small, false, false));
+        var Knight = new ImageView(
+                new Image(getClass().getResourceAsStream("/icons/KNIGHT" + suff + ".png"), small, small, false, false));
+        var Bishop = new ImageView(
+                new Image(getClass().getResourceAsStream("/icons/BISHOP" + suff + ".png"), small, small, false, false));
+        var Pawn = new ImageView(
+                new Image(getClass().getResourceAsStream("/icons/PAWN" + suff + ".png"), small, small, false, false));
+        var QueenCap = new Label("0");
+        QueenCap.setId("QueenCap" + suff);
+        var RookCap = new Label("0");
+        RookCap.setId("RookCap" + suff);
+        var KnightCap = new Label("0");
+        KnightCap.setId("KnightCap" + suff);
+        var BishopCap = new Label("0");
+        BishopCap.setId("BishopCap" + suff);
+        var PawnCap = new Label("0");
+        PawnCap.setId("PawnCap" + suff);
+        grid.add(Queen, 0, 0);
+        grid.add(QueenCap, 0, 1);
+        grid.add(Rook, 1, 0);
+        grid.add(RookCap, 1, 1);
+        grid.add(Knight, 2, 0);
+        grid.add(KnightCap, 2, 1);
+        grid.add(Bishop, 3, 0);
+        grid.add(BishopCap, 3, 1);
+        grid.add(Pawn, 4, 0);
+        grid.add(PawnCap, 4, 1);
+        for (int i = 0; i < 5; ++i) {
+            var cc = new ColumnConstraints();
+            cc.setHalignment(HPos.CENTER);
+            grid.getColumnConstraints().add(cc);
+        }
+        return grid;
+    }
+
+    private Button makePieceButton(Piece piece) {
+        var pc = new Button();
+        pc.setMaxHeight(squareSize);
+        pc.setMaxWidth(squareSize);
+        pc.setStyle("-fx-border-color: transparent; -fx-background-color: transparent");
+        String path = "/icons/" + piece.toString() + ".png";
+        Image img = new Image(getClass().getResourceAsStream(path), squareSize * 0.95, squareSize * 0.95, false, false);
+        pc.setGraphic(new ImageView(img));
+        pc.setPadding(Insets.EMPTY);
+        StackPane.setMargin(pc, Insets.EMPTY);
+
+        // TODO: add event handler
+
+        pc.setId(piece.toString());
+        return pc;
+    }
+
     @Override
     public void start(Stage stage) {
 
         Game game = new Game();
 
-        var defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
-        var titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
-        
         // bottom
         var javaVersion = SystemInfo.javaVersion();
         var javafxVersion = SystemInfo.javafxVersion();
@@ -50,42 +115,69 @@ public class App extends Application {
         HBox footer = new HBox(5, info, link);
         footer.setAlignment(Pos.CENTER);
 
+        // top: toolbar
+        var Toolbar = new HBox(10);
+        Toolbar.setPadding(new Insets(5));
+        var title = new Label("Press 'Start' for a New Game.");
+        title.setFont(titleFont);
+        title.setId("titleText");
+        Toolbar.getChildren().add(title);
+        Toolbar.setAlignment(Pos.CENTER);
+
         // left
         var startBtn = new Button();
         startBtn.setText("Start");
+        startBtn.setOnAction(e -> {
+            var t = (Label) Toolbar.lookup("#titleText");
+            t.setText(game.turn + "to play.");
+            startBtn.setDisable(true);
+        });
+        
+        var saveBtn = new Button();
+        saveBtn.setText("Save");
+        
         var quitBtn = new Button();
         quitBtn.setText("Quit");
         quitBtn.setOnAction((ActionEvent event) -> {
             Platform.exit();
         });
-        VBox ctrls = new VBox(10, startBtn, quitBtn);
+        VBox ctrls = new VBox(10, startBtn, saveBtn, quitBtn);
+        ctrls.setPadding(new Insets(5));
+        ctrls.setAlignment(Pos.CENTER);
 
-        // right: captured pieces TODO
-        var Captured = new VBox();
-        var rightLabel = new Label("Captured\nPieces");
+        // right: captured pieces
+        var rightLabel = new Label("Captured Pieces");
         rightLabel.setFont(titleFont);
-        Captured.getChildren().add(rightLabel);
-
-        // top: toolbar
-        var Toolbar = new HBox(5);
-        var title = new Label("2D Chess");
-        title.setFont(titleFont);
-        Toolbar.getChildren().add(title);
-        Toolbar.setAlignment(Pos.CENTER);
+        rightLabel.setPadding(new Insets(5));
+        var blackCaptured = makeCaptured(true);
+        var whiteCaptured = makeCaptured(false);
+        var Captured = new VBox(20, rightLabel, blackCaptured, whiteCaptured);
+        Captured.setAlignment(Pos.CENTER);
 
         // center: chessboard
         TilePane tile = new TilePane();
+        tile.setPrefColumns(Board.NumX);
         var tChild = tile.getChildren();
-        tile.setMaxWidth(Board.NumX * 50);
-        tile.setMaxHeight(Board.NumY * 50);
-        for (int y =  Board.NumY - 1; y >= 0; --y) {
+        tile.setMaxWidth(Board.NumX * squareSize);
+        tile.setMaxHeight(Board.NumY * squareSize);
+        for (int y = Board.NumY - 1; y >= 0; --y) {
             for (int x = 0; x < Board.NumX; ++x) {
-                Position pos = game.squares[x][y]; 
+                Position pos = game.squares[x][y];
                 var isBlack = pos.isBlack;
-                var col = isBlack ? Color.rgb(0,0,0) : Color.rgb(255, 255, 255);
-                var Sq = new Rectangle(50, 50, col);
-                Sq.setId(pos.toString());
-                tChild.add(Sq);
+                var col = isBlack ? Color.rgb(0, 0, 0) : Color.rgb(255, 255, 255);
+                var sq = new Rectangle(squareSize, squareSize, col);
+                StackPane.setMargin(sq, Insets.EMPTY);
+                sq.setId(pos.toString());
+
+                var sp = new StackPane(sq);
+                sp.setMaxSize(squareSize, squareSize);
+                var piece = pos.piece;
+                if (piece != null) {
+                    Button pieceCtrl = makePieceButton(piece);
+                    sp.getChildren().add(pieceCtrl);
+                }
+
+                tChild.add(sp);
             }
         }
 
@@ -97,7 +189,7 @@ public class App extends Application {
         border.setRight(Captured);
         border.setCenter(tile);
 
-        var scene = new Scene(border, 640, 480);
+        var scene = new Scene(border, 800, 600);
         stage.setScene(scene);
         stage.setTitle("Chess2D");
         stage.show();

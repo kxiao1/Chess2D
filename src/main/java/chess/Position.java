@@ -12,7 +12,7 @@ public class Position {
         assert(Board.isValidPos(x,y));
         this.x = x;
         this.y = y;
-        this.name = String.valueOf((char)(y + 65)) + (x + 1);
+        this.name = String.valueOf((char)(x + 65)) + (y + 1);
         this.piece = piece;
         
         isLastRow = (y == 0 || y == (Board.NumY-1));

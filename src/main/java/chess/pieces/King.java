@@ -2,11 +2,11 @@ package chess.pieces;
 import chess.*;
 import java.util.ArrayList;
 
-class King extends Piece {
+public class King extends Piece {
     private int disp[] = {-1, 0, 1};
 
-    King(Position pos) {
-        super(pos);
+    public King(Position pos, Pieces type) {
+        super(pos, type);
     }
     public ArrayList<Move> getAvailableMoves() {
         var moves = new ArrayList<Move>();
