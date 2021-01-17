@@ -1,5 +1,4 @@
-package chess.src.main.java;
-
+package chess;
 import java.util.ArrayList;
 
 enum Turn {

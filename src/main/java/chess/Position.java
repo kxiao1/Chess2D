@@ -1,5 +1,4 @@
-package chess.src.main.java;
-
+package chess;
 public class Position {
     private int x;
     private int y;
@@ -9,7 +8,7 @@ public class Position {
     boolean isBlack;
 
     Position(int x, int y, Piece piece) {
-        assert(x >= 0 && x <= 7 && y >= 0 && y <= 7);
+        assert(Board.isValidPos(x,y));
         this.x = x;
         this.y = y;
         this.name = String.valueOf((char)(y + 65)) + (x + 1);

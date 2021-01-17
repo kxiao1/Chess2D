@@ -1,5 +1,5 @@
-package chess.src.main.java.pieces;
-import chess.src.main.java.*;
+package chess.pieces;
+import chess.*;
 import java.util.ArrayList;
 
 class King extends Piece {

@@ -1,4 +1,4 @@
-package chess.src.main.java;
+package chess;
 import java.util.ArrayList;
 
 public abstract class Piece {

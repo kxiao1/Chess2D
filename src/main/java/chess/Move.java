@@ -1,5 +1,4 @@
-package chess.src.main.java;
-
+package chess;
 enum Action {
     NONE, PROMOTE,
     CASTLE, ENPASSANT
