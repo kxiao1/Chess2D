@@ -28,6 +28,9 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.paint.Color;
 
+// collections
+import java.util.ArrayList;
+
 /**
  * JavaFX App
  */
@@ -36,6 +39,108 @@ public class App extends Application {
     final int squareSize = 50;
     final Font defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
     final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
+    final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
+    final String hoverStyle = "-fx-border-color: red; -fx-background-color: transparent";
+
+    enum Step {
+        PICKSRC, PICKDEST
+    };
+
+    Step currStep = Step.PICKSRC;
+    ArrayList<Position> highlightedPos = new ArrayList<Position>();
+
+    Game game;
+    Scene scene;
+
+    private void makeMove(Move move) {
+
+        // complete current move
+        // (move piece physically, account for capture, check etc)
+
+        // disable all of current player's buttons
+        unHighlight();
+        deactivatePieces(game.turn);
+
+        // switch players
+        game.switchTurn();
+
+        // recalculate moves
+        game.getAllMoves();
+
+        // enable all of other player's buttons
+        activatePieces(game.turn);
+    }
+
+    // pick a piece as the source move
+    private void pcSrc(Piece p) {
+        unHighlight();
+        makeHighlighted(p);
+    }
+
+    private void makeHighlighted(Piece p) {
+        var moves = p.getAvailableMoves();
+        for (var move : moves) {
+            var pos = move.new_pos;
+            var sp = (StackPane) scene.lookup(pos.toString() + "_sp");
+            highlightedPos.add(pos);
+            var sq = (Rectangle) sp.lookup(pos.toString());
+            sq.setFill(Color.DARKRED);
+
+            if (pos.piece != null) {
+                // if occupied, enable the button
+                var pc = (Button) sp.lookup(pos.piece.toString());
+                pc.setDisable(false);
+                pc.setOnAction(e -> makeMove(move));
+            } else {
+                // if not occupied, add the pickdest event handler
+                sq.setOnMouseClicked(e -> makeMove(move));
+            }
+        }
+    }
+
+    // unhighlight squares and disable any attached buttons
+    private void unHighlight() {
+        for (var pos : highlightedPos) {
+            var sp = (StackPane) scene.lookup(pos.toString() + "_sp");
+            var sq = (Rectangle) sp.lookup(pos.toString());
+            sq.setFill(pos.isBlack ? Color.BLACK : Color.WHITE);
+
+            if (pos.piece != null) {
+                // disable and restore original handler
+                var pc = (Button) sp.lookup(pos.piece.toString());
+                pc.setDisable(true);
+                pc.setOnAction(e -> pcSrc(pos.piece));
+            } else {
+                // remove the rectangle's handler
+                sq.setOnMouseClicked(null);
+            }
+        }
+
+        // reset the list
+        highlightedPos = new ArrayList<Position>();
+    }
+
+    private void activatePieces(Turn turn) {
+        var pieces = (turn == Turn.BLACK ? game.BlackPieces : game.WhitePieces);
+        for (var p : pieces) {
+            var sp = scene.lookup(p.pos.toString() + "_sp");
+            var pc = sp.lookup(p.toString());
+            pc.setDisable(false);
+            pc.setOnMouseEntered(e -> pc.setStyle(hoverStyle));
+            pc.setOnMouseExited(e -> pc.setStyle(idleStyle));
+        }
+    }
+
+    private void deactivatePieces(Turn turn) {
+        var pieces = (turn == Turn.BLACK ? game.BlackPieces : game.WhitePieces);
+        for (var p : pieces) {
+            var sp = scene.lookup(p.pos.toString() + "_sp");
+            var pc = sp.lookup(p.toString());
+            pc.setDisable(true);
+            pc.setOnMouseEntered(null);
+            pc.setOnMouseExited(null);
+        }
+    }
 
     private GridPane makeCaptured(boolean isBlack) {
         int small = 30;
@@ -84,23 +189,23 @@ public class App extends Application {
         var pc = new Button();
         pc.setMaxHeight(squareSize);
         pc.setMaxWidth(squareSize);
-        pc.setStyle("-fx-border-color: transparent; -fx-background-color: transparent");
+        pc.setStyle(idleStyle);
+        pc.setDisable(true); // all pieces disabled before game starts
         String path = "/icons/" + piece.toString() + ".png";
         Image img = new Image(getClass().getResourceAsStream(path), squareSize * 0.95, squareSize * 0.95, false, false);
         pc.setGraphic(new ImageView(img));
         pc.setPadding(Insets.EMPTY);
         StackPane.setMargin(pc, Insets.EMPTY);
 
-        // TODO: add event handler
-
+        //add event handler
+        pc.setOnAction(e -> pcSrc(piece));
         pc.setId(piece.toString());
         return pc;
     }
 
-    @Override
-    public void start(Stage stage) {
+    private void initUI(Stage stage) {
 
-        Game game = new Game();
+        game = new Game();
 
         // bottom
         var javaVersion = SystemInfo.javaVersion();
@@ -129,13 +234,15 @@ public class App extends Application {
         startBtn.setText("Start");
         startBtn.setOnAction(e -> {
             var t = (Label) Toolbar.lookup("#titleText");
-            t.setText(game.turn + "to play.");
+            t.setText(game.turn + " to play.");
             startBtn.setDisable(true);
+            game.getAllMoves();
+            activatePieces(game.turn);
         });
-        
+
         var saveBtn = new Button();
         saveBtn.setText("Save");
-        
+
         var quitBtn = new Button();
         quitBtn.setText("Quit");
         quitBtn.setOnAction((ActionEvent event) -> {
@@ -162,7 +269,7 @@ public class App extends Application {
         tile.setMaxHeight(Board.NumY * squareSize);
         for (int y = Board.NumY - 1; y >= 0; --y) {
             for (int x = 0; x < Board.NumX; ++x) {
-                Position pos = game.squares[x][y];
+                Position pos = game.chessBoard.squares[x][y];
                 var isBlack = pos.isBlack;
                 var col = isBlack ? Color.rgb(0, 0, 0) : Color.rgb(255, 255, 255);
                 var sq = new Rectangle(squareSize, squareSize, col);
@@ -170,6 +277,7 @@ public class App extends Application {
                 sq.setId(pos.toString());
 
                 var sp = new StackPane(sq);
+                sp.setId(pos.toString() + "_sp"); // uniquely identify the stack pange
                 sp.setMaxSize(squareSize, squareSize);
                 var piece = pos.piece;
                 if (piece != null) {
@@ -189,10 +297,15 @@ public class App extends Application {
         border.setRight(Captured);
         border.setCenter(tile);
 
-        var scene = new Scene(border, 800, 600);
+        scene = new Scene(border, 800, 600);
         stage.setScene(scene);
         stage.setTitle("Chess2D");
         stage.show();
+    }
+
+    @Override
+    public void start(Stage stage) {
+        initUI(stage);
     }
 
     public static void main(String[] args) {
