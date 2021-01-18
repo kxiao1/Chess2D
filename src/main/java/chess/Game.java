@@ -18,7 +18,7 @@ class Game {
     ArrayList<Piece> CapturedBlack;
     ArrayList<Piece> CapturedWhite;
     Checked checked;
-    Position[][] squares;
+    Board chessBoard;
 
     Game() {
         turn = Turn.WHITE;
@@ -28,7 +28,9 @@ class Game {
         CapturedBlack = new ArrayList<Piece>();
         CapturedWhite = new ArrayList<Piece>();
         checked = Checked.NONE;
-        squares = new Position[Board.NumX][];
+        
+        var squares = new Position[Board.NumX][];
+        chessBoard = new Board(squares); 
         for (int x = 0; x < Board.NumX; ++x) {
             squares[x] = new Position[Board.NumY];
             for (int y = 0; y < Board.NumY; ++y) {
@@ -57,15 +59,33 @@ class Game {
                     default:
                 }
                 if (newPiece != null) {
+                    newPiece.chessBoard = chessBoard;
                     pos.piece = newPiece;
                     if (pos.isBlack) {
+                        newPiece.ownPieces = BlackPieces;
+                        newPiece.oppPieces = WhitePieces;
                         BlackPieces.add(newPiece);
                     } else {
+                        newPiece.ownPieces = WhitePieces;
+                        newPiece.oppPieces = BlackPieces;
                         WhitePieces.add(newPiece);
                     }
                 }
                 squares[x][y] = pos; 
             }
+        }
+    }
+
+    void switchTurn() {
+        turn = turn == Turn.BLACK ? Turn.WHITE : Turn.BLACK;
+    }
+
+    void getAllMoves() {
+        var pieces = turn == Turn.BLACK ? BlackPieces : WhitePieces;
+        for (var p : pieces) {
+            p.setAvailableMoves();
         } 
     }
+
+    // displacement
 }

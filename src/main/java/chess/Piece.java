@@ -6,6 +6,11 @@ public abstract class Piece {
     protected boolean hasMoved;
     protected Pieces type;
     protected boolean isBlack;
+    protected ArrayList<Move> availableMoves;
+
+    protected Board chessBoard;
+    protected ArrayList<Piece> ownPieces;
+    protected ArrayList<Piece> oppPieces;
 
     public Piece(Position pos, Pieces type) {
         this.pos = pos;
@@ -13,7 +18,10 @@ public abstract class Piece {
         hasMoved = false;
         isBlack = Board.onBlackSide(pos);
     }
-    public abstract ArrayList<Move> getAvailableMoves();
+    public ArrayList<Move> getAvailableMoves() {
+        return availableMoves;
+    }
+    public abstract void setAvailableMoves();
 
     public String toString() {
         return type + "_" + (isBlack ? "black" : "white");

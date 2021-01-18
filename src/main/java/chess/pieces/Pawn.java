@@ -8,8 +8,8 @@ public class Pawn extends Piece {
         super(pos, type);
     }
 
-    public ArrayList<Move> getAvailableMoves() {
-        return null;
+    public void setAvailableMoves() {
+        // TODO
     }
 }
 

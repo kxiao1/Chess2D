@@ -8,8 +8,7 @@ public class King extends Piece {
     public King(Position pos, Pieces type) {
         super(pos, type);
     }
-    public ArrayList<Move> getAvailableMoves() {
-        var moves = new ArrayList<Move>();
+    public void setAvailableMoves() {
         for (int x:disp) {
             for (int y:disp) {
                 int newX = pos.getX() + x;
@@ -17,9 +16,10 @@ public class King extends Piece {
                 
                 // if out of bounds, rej
 
+                // if blocked, rej
+
                 // if under check, rej
             }
         }
-        return moves;
     }
 }
