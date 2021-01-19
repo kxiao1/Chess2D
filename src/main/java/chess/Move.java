@@ -1,19 +1,17 @@
 package chess;
 
-enum Action {
-    NONE, PROMOTE, CASTLE, ENPASSANT
-}
-
 public class Move {
+    String pieceName;
     Position old_pos;
     Position new_pos;
     Action action;
-    boolean isCheck;
 
-    Move(Position o, Position n, Action a, boolean i) {
+    Move(String p, Position o, Position n, Action a) {
+        pieceName = p;
         old_pos = o;
         new_pos = n;
         action = a;
-        isCheck = i;
     }
+
+    // TODO: add name to move
 }

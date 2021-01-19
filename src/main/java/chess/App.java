@@ -42,11 +42,6 @@ public class App extends Application {
     final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
     final String hoverStyle = "-fx-border-color: red; -fx-background-color: transparent";
 
-    enum Step {
-        PICKSRC, PICKDEST
-    };
-
-    Step currStep = Step.PICKSRC;
     ArrayList<Position> highlightedPos = new ArrayList<Position>();
 
     Game game;
@@ -55,7 +50,27 @@ public class App extends Application {
     private void makeMove(Move move) {
 
         // complete current move
-        // (move piece physically, account for capture, check etc)
+        var startPos = move.old_pos;
+        var p = move.old_pos.piece;
+        var sp = (StackPane) scene.lookup("#" + startPos.toString() + "_sp");
+        var pc = (Button) sp.lookup("#" + p.toString());
+        sp.getChildren().remove(pc);
+
+        var pcNew = makePieceButton(p);
+        var endPos = move.new_pos;
+        var spNew = (StackPane) scene.lookup("#" + endPos.toString() + "_sp");
+        spNew.getChildren().add(pcNew);
+
+        // (TODO: account for check etc)
+        var capturedPiece = game.makeMoveAndCapture(move);
+        if (capturedPiece != null) {
+            var pcCap = (Button) spNew.lookup("#" + capturedPiece.toString());
+            spNew.getChildren().remove(pcCap);
+            var cap = (Label) scene.lookup("#Cap_" + capturedPiece.toString());
+            var newChar = cap.getText().charAt(0);
+            newChar++;
+            cap.setText(String.valueOf(newChar));
+        }
 
         // disable all of current player's buttons
         unHighlight();
@@ -63,6 +78,9 @@ public class App extends Application {
 
         // switch players
         game.switchTurn();
+        var title = (Label) scene.lookup("#titleText");
+        title.setText(game.turn.toString() + " to play.");
+        title.requestFocus();
 
         // recalculate moves
         game.getAllMoves();
@@ -81,14 +99,14 @@ public class App extends Application {
         var moves = p.getAvailableMoves();
         for (var move : moves) {
             var pos = move.new_pos;
-            var sp = (StackPane) scene.lookup(pos.toString() + "_sp");
+            var sp = (StackPane) scene.lookup("#" + pos.toString() + "_sp");
             highlightedPos.add(pos);
-            var sq = (Rectangle) sp.lookup(pos.toString());
+            var sq = (Rectangle) sp.lookup("#" + pos.toString());
             sq.setFill(Color.DARKRED);
 
             if (pos.piece != null) {
                 // if occupied, enable the button
-                var pc = (Button) sp.lookup(pos.piece.toString());
+                var pc = (Button) sp.lookup("#" + pos.piece.toString());
                 pc.setDisable(false);
                 pc.setOnAction(e -> makeMove(move));
             } else {
@@ -101,13 +119,13 @@ public class App extends Application {
     // unhighlight squares and disable any attached buttons
     private void unHighlight() {
         for (var pos : highlightedPos) {
-            var sp = (StackPane) scene.lookup(pos.toString() + "_sp");
-            var sq = (Rectangle) sp.lookup(pos.toString());
+            var sp = (StackPane) scene.lookup("#" + pos.toString() + "_sp");
+            var sq = (Rectangle) sp.lookup("#" + pos.toString());
             sq.setFill(pos.isBlack ? Color.BLACK : Color.WHITE);
 
             if (pos.piece != null) {
                 // disable and restore original handler
-                var pc = (Button) sp.lookup(pos.piece.toString());
+                var pc = (Button) sp.lookup("#" + pos.piece.toString());
                 pc.setDisable(true);
                 pc.setOnAction(e -> pcSrc(pos.piece));
             } else {
@@ -121,10 +139,10 @@ public class App extends Application {
     }
 
     private void activatePieces(Turn turn) {
-        var pieces = (turn == Turn.BLACK ? game.BlackPieces : game.WhitePieces);
+        var pieces = (turn == Turn.BLACK ? game.blackPieces : game.whitePieces);
         for (var p : pieces) {
-            var sp = scene.lookup(p.pos.toString() + "_sp");
-            var pc = sp.lookup(p.toString());
+            var sp = (StackPane) scene.lookup("#" + p.pos.toString() + "_sp");
+            var pc = (Button) sp.lookup("#" + p.toString());
             pc.setDisable(false);
             pc.setOnMouseEntered(e -> pc.setStyle(hoverStyle));
             pc.setOnMouseExited(e -> pc.setStyle(idleStyle));
@@ -132,10 +150,10 @@ public class App extends Application {
     }
 
     private void deactivatePieces(Turn turn) {
-        var pieces = (turn == Turn.BLACK ? game.BlackPieces : game.WhitePieces);
+        var pieces = (turn == Turn.BLACK ? game.blackPieces : game.whitePieces);
         for (var p : pieces) {
-            var sp = scene.lookup(p.pos.toString() + "_sp");
-            var pc = sp.lookup(p.toString());
+            var sp = (StackPane) scene.lookup("#" + p.pos.toString() + "_sp");
+            var pc = (Button) sp.lookup("#" + p.toString());
             pc.setDisable(true);
             pc.setOnMouseEntered(null);
             pc.setOnMouseExited(null);
@@ -158,15 +176,15 @@ public class App extends Application {
         var Pawn = new ImageView(
                 new Image(getClass().getResourceAsStream("/icons/PAWN" + suff + ".png"), small, small, false, false));
         var QueenCap = new Label("0");
-        QueenCap.setId("QueenCap" + suff);
+        QueenCap.setId("Cap_QUEEN" + suff);
         var RookCap = new Label("0");
-        RookCap.setId("RookCap" + suff);
+        RookCap.setId("Cap_ROOK" + suff);
         var KnightCap = new Label("0");
-        KnightCap.setId("KnightCap" + suff);
+        KnightCap.setId("Cap_KNIGHT" + suff);
         var BishopCap = new Label("0");
-        BishopCap.setId("BishopCap" + suff);
+        BishopCap.setId("Cap_BISHOP" + suff);
         var PawnCap = new Label("0");
-        PawnCap.setId("PawnCap" + suff);
+        PawnCap.setId("Cap_PAWN" + suff);
         grid.add(Queen, 0, 0);
         grid.add(QueenCap, 0, 1);
         grid.add(Rook, 1, 0);
@@ -197,7 +215,7 @@ public class App extends Application {
         pc.setPadding(Insets.EMPTY);
         StackPane.setMargin(pc, Insets.EMPTY);
 
-        //add event handler
+        // add event handler
         pc.setOnAction(e -> pcSrc(piece));
         pc.setId(piece.toString());
         return pc;
@@ -229,28 +247,31 @@ public class App extends Application {
         Toolbar.getChildren().add(title);
         Toolbar.setAlignment(Pos.CENTER);
 
-        // left
-        var startBtn = new Button();
-        startBtn.setText("Start");
+        // left: gameplay buttons
+        var startBtn = new Button("Start");
         startBtn.setOnAction(e -> {
             var t = (Label) Toolbar.lookup("#titleText");
             t.setText(game.turn + " to play.");
             startBtn.setDisable(true);
             game.getAllMoves();
             activatePieces(game.turn);
+            title.requestFocus();
         });
 
-        var saveBtn = new Button();
-        saveBtn.setText("Save");
+        var restartBtn = new Button("Restart");
+        restartBtn.setOnAction(e -> {
+            initUI(stage);
+        });
+        var saveBtn = new Button("Save (TODO)");
 
-        var quitBtn = new Button();
-        quitBtn.setText("Quit");
-        quitBtn.setOnAction((ActionEvent event) -> {
+        var quitBtn = new Button("Quit");
+        quitBtn.setOnAction(e -> {
             Platform.exit();
         });
-        VBox ctrls = new VBox(10, startBtn, saveBtn, quitBtn);
+
+        VBox ctrls = new VBox(10, startBtn, restartBtn, saveBtn, quitBtn);
         ctrls.setPadding(new Insets(5));
-        ctrls.setAlignment(Pos.CENTER);
+        ctrls.setAlignment(Pos.CENTER_LEFT);
 
         // right: captured pieces
         var rightLabel = new Label("Captured Pieces");
@@ -267,9 +288,10 @@ public class App extends Application {
         var tChild = tile.getChildren();
         tile.setMaxWidth(Board.NumX * squareSize);
         tile.setMaxHeight(Board.NumY * squareSize);
+        var squares = game.chessBoard.getSquares();
         for (int y = Board.NumY - 1; y >= 0; --y) {
             for (int x = 0; x < Board.NumX; ++x) {
-                Position pos = game.chessBoard.squares[x][y];
+                Position pos = squares[x][y];
                 var isBlack = pos.isBlack;
                 var col = isBlack ? Color.rgb(0, 0, 0) : Color.rgb(255, 255, 255);
                 var sq = new Rectangle(squareSize, squareSize, col);
@@ -298,6 +320,7 @@ public class App extends Application {
         border.setCenter(tile);
 
         scene = new Scene(border, 800, 600);
+        title.requestFocus();
         stage.setScene(scene);
         stage.setTitle("Chess2D");
         stage.show();

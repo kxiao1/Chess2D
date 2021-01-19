@@ -1,4 +1,5 @@
 package chess;
+
 import java.util.ArrayList;
 import chess.pieces.*;
 
@@ -13,9 +14,11 @@ enum Checked {
 class Game {
     Turn turn;
     ArrayList<String> logs;
-    ArrayList<Piece> WhitePieces;
-    ArrayList<Piece> BlackPieces;
-    ArrayList<Piece> CapturedBlack;
+    ArrayList<Piece> whitePieces;
+    ArrayList<Piece> blackPieces;
+    ArrayList<Piece> ownPieces;
+    ArrayList<Piece> oppPieces;
+    ArrayList<Piece> capturedBlack;
     ArrayList<Piece> CapturedWhite;
     Checked checked;
     Board chessBoard;
@@ -23,14 +26,16 @@ class Game {
     Game() {
         turn = Turn.WHITE;
         logs = new ArrayList<String>();
-        BlackPieces = new ArrayList<Piece>();
-        WhitePieces = new ArrayList<Piece>();
-        CapturedBlack = new ArrayList<Piece>();
+        blackPieces = new ArrayList<Piece>();
+        whitePieces = new ArrayList<Piece>();
+        ownPieces = whitePieces;
+        oppPieces = blackPieces;
+        capturedBlack = new ArrayList<Piece>();
         CapturedWhite = new ArrayList<Piece>();
         checked = Checked.NONE;
-        
+
         var squares = new Position[Board.NumX][];
-        chessBoard = new Board(squares); 
+        chessBoard = new Board(squares, whitePieces, blackPieces, turn);
         for (int x = 0; x < Board.NumX; ++x) {
             squares[x] = new Position[Board.NumY];
             for (int y = 0; y < Board.NumY; ++y) {
@@ -40,52 +45,77 @@ class Game {
                 switch (pieceName) {
                     case BISHOP:
                         newPiece = new Bishop(pos, pieceName);
-                        break; 
+                        break;
                     case KING:
                         newPiece = new King(pos, pieceName);
-                        break; 
+                        break;
                     case KNIGHT:
                         newPiece = new Knight(pos, pieceName);
-                        break; 
+                        break;
                     case PAWN:
                         newPiece = new Pawn(pos, pieceName);
-                        break; 
+                        break;
                     case QUEEN:
                         newPiece = new Queen(pos, pieceName);
-                        break; 
+                        break;
                     case ROOK:
                         newPiece = new Rook(pos, pieceName);
-                        break; 
+                        break;
                     default:
                 }
                 if (newPiece != null) {
                     newPiece.chessBoard = chessBoard;
                     pos.piece = newPiece;
-                    if (pos.isBlack) {
-                        newPiece.ownPieces = BlackPieces;
-                        newPiece.oppPieces = WhitePieces;
-                        BlackPieces.add(newPiece);
+                    if (newPiece.isBlack) {
+                        newPiece.ownPieces = blackPieces;
+                        newPiece.oppPieces = whitePieces;
+                        blackPieces.add(newPiece);
                     } else {
-                        newPiece.ownPieces = WhitePieces;
-                        newPiece.oppPieces = BlackPieces;
-                        WhitePieces.add(newPiece);
+                        newPiece.ownPieces = whitePieces;
+                        newPiece.oppPieces = blackPieces;
+                        whitePieces.add(newPiece);
                     }
                 }
-                squares[x][y] = pos; 
+                squares[x][y] = pos;
             }
         }
     }
 
     void switchTurn() {
         turn = turn == Turn.BLACK ? Turn.WHITE : Turn.BLACK;
+        ownPieces = turn == Turn.WHITE ? whitePieces : blackPieces;
+        oppPieces = turn == Turn.WHITE ? blackPieces : whitePieces;
+        chessBoard.switchTurns();
     }
 
     void getAllMoves() {
-        var pieces = turn == Turn.BLACK ? BlackPieces : WhitePieces;
-        for (var p : pieces) {
+        for (var p : ownPieces) {
             p.setAvailableMoves();
-        } 
+        }
     }
 
-    // displacement
+    // Updates state and returns captured piece if any
+    Piece makeMoveAndCapture(Move m) {
+        var startPos = m.old_pos;
+        var p = startPos.piece;
+        if (!p.hasMoved) {
+            p.hasMoved = true;
+        }
+        var endPos = m.new_pos;
+        startPos.piece = null;
+
+        var oppPiece = endPos.piece;
+        if (oppPiece != null) {
+            oppPieces.remove(oppPiece);
+            if (oppPiece.isBlack) {
+                capturedBlack.add(oppPiece);
+            } else {
+                CapturedWhite.add(oppPiece);
+            }
+        }
+        endPos.piece = p;
+
+        p.pos = endPos;
+        return oppPiece;
+    }
 }
