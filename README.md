@@ -4,14 +4,17 @@ Built with JavaFX and Maven.
 ## Progress
 - [x] Board Layout
 - [x] Graphics for Chess Pieces
-- [ ] Highlighting Possible Moves
+- [x] Highlighting Possible Moves
 - [ ] Piece Logic
 - [ ] Check for Checks
-- [ ] Captures, Promoting, Castling, En Passant
+- [ ] Captures 
+- [ ] Promoting
+- [ ] Castling 
+- [ ] En Passant
 - [ ] Algebraic Notation and Outputing Logs
 - [ ] Game Cycle
 - [ ] Timer
-- [ ] Restarts
+- [x] Restarts
 - [ ] Undos
 - [ ] Playing Games from Logs
 
