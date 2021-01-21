@@ -1,4 +1,4 @@
 module personal {
-    requires javafx.controls;
+    requires transitive javafx.controls;
     exports chess;
 }
