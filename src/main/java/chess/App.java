@@ -18,7 +18,8 @@ import javafx.scene.image.*;
 
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Button;
-import javafx.event.ActionEvent;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 
 // visuals
 import javafx.geometry.Pos;
@@ -30,6 +31,7 @@ import javafx.scene.paint.Color;
 
 // collections
 import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * JavaFX App
@@ -37,6 +39,7 @@ import java.util.ArrayList;
 public class App extends Application {
 
     final int squareSize = 50;
+    final int small = 30;
     final Font defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
     final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
     final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
@@ -61,15 +64,25 @@ public class App extends Application {
         var spNew = (StackPane) scene.lookup("#" + endPos.toString() + "_sp");
         spNew.getChildren().add(pcNew);
 
-        // (TODO: account for check etc)
+        // account for captures
         var capturedPiece = game.makeMoveAndCapture(move);
         if (capturedPiece != null) {
             var pcCap = (Button) spNew.lookup("#" + capturedPiece.toString());
             spNew.getChildren().remove(pcCap);
             var cap = (Label) scene.lookup("#Cap_" + capturedPiece.toString());
-            var newChar = cap.getText().charAt(0);
-            newChar++;
-            cap.setText(String.valueOf(newChar));
+            var newChar = (int) cap.getText().charAt(0) + 1;
+            cap.setText(String.valueOf((char) newChar));
+        }
+
+        // TODO: account for Promotions, Castling, and En Passant
+
+        // account for checks
+        var checkedBox = (Label) scene.lookup("#checkedBox");
+        // assuming the move is valid, the current side is not under check
+        checkedBox.setVisible(false);
+        // check if the opponent is now check
+        if (game.isCheck()) {
+            checkedBox.setVisible(true);
         }
 
         // disable all of current player's buttons
@@ -83,10 +96,25 @@ public class App extends Application {
         title.requestFocus();
 
         // recalculate moves
-        game.getAllMoves();
+        var hasMoves = game.getAllMoves();
+        if (!hasMoves) {
+            // checkmate
+            var text = game.turn.toString() + " has been checkmated.";
+            var alert = new Alert(Alert.AlertType.INFORMATION, text);
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+                // disable the board
+                var b = (TilePane) scene.lookup("#chessboard");
+                b.setDisable(true);
 
-        // enable all of other player's buttons
-        activatePieces(game.turn);
+                // prompt a restart
+                var ctrl = (Button) scene.lookup("#restartBtn");
+                ctrl.requestFocus();
+            }
+        } else {
+            // enable all of other player's buttons
+            activatePieces(game.turn);
+        }
     }
 
     // pick a piece as the source move
@@ -161,7 +189,6 @@ public class App extends Application {
     }
 
     private GridPane makeCaptured(boolean isBlack) {
-        int small = 30;
         var grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         var suff = isBlack ? "_black" : "_white";
@@ -221,6 +248,24 @@ public class App extends Application {
         return pc;
     }
 
+    private StackPane makeSquare(Position pos) {
+        var isBlack = pos.isBlack;
+        var col = isBlack ? Color.rgb(0, 0, 0) : Color.rgb(255, 255, 255);
+        var sq = new Rectangle(squareSize, squareSize, col);
+        StackPane.setMargin(sq, Insets.EMPTY);
+        sq.setId(pos.toString());
+
+        var sp = new StackPane(sq);
+        sp.setId(pos.toString() + "_sp"); // uniquely identify the stack pane
+        sp.setMaxSize(squareSize, squareSize);
+        var piece = pos.piece;
+        if (piece != null) {
+            Button pieceCtrl = makePieceButton(piece);
+            sp.getChildren().add(pieceCtrl);
+        }
+        return sp;
+    }
+
     private void initUI(Stage stage) {
 
         game = new Game();
@@ -239,12 +284,19 @@ public class App extends Application {
         footer.setAlignment(Pos.CENTER);
 
         // top: toolbar
-        var Toolbar = new HBox(10);
-        Toolbar.setPadding(new Insets(5));
         var title = new Label("Press 'Start' for a New Game.");
         title.setFont(titleFont);
         title.setId("titleText");
-        Toolbar.getChildren().add(title);
+
+        var checkedBox = new Label("CHECKED");
+        checkedBox.setFont(titleFont);
+        checkedBox.setTextFill(Color.RED);
+        checkedBox.setId("checkedBox");
+        checkedBox.setVisible(false);
+        ; // by default this text should be invisible
+
+        var Toolbar = new VBox(10, title, checkedBox);
+        Toolbar.setPadding(new Insets(5));
         Toolbar.setAlignment(Pos.CENTER);
 
         // left: gameplay buttons
@@ -257,17 +309,23 @@ public class App extends Application {
             activatePieces(game.turn);
             title.requestFocus();
         });
+        startBtn.setMaxWidth(Double.MAX_VALUE);
 
         var restartBtn = new Button("Restart");
+        restartBtn.setId("restartBtn");
         restartBtn.setOnAction(e -> {
             initUI(stage);
         });
+        restartBtn.setMaxWidth(Double.MAX_VALUE);
+
         var saveBtn = new Button("Save (TODO)");
+        saveBtn.setMaxWidth(Double.MAX_VALUE);
 
         var quitBtn = new Button("Quit");
         quitBtn.setOnAction(e -> {
             Platform.exit();
         });
+        quitBtn.setMaxWidth(Double.MAX_VALUE);
 
         VBox ctrls = new VBox(10, startBtn, restartBtn, saveBtn, quitBtn);
         ctrls.setPadding(new Insets(5));
@@ -285,30 +343,31 @@ public class App extends Application {
         // center: chessboard
         TilePane tile = new TilePane();
         tile.setPrefColumns(Board.NumX);
+        tile.setId("chessboard");
         var tChild = tile.getChildren();
-        tile.setMaxWidth(Board.NumX * squareSize);
-        tile.setMaxHeight(Board.NumY * squareSize);
-        var squares = game.chessBoard.getSquares();
+        tile.setMaxWidth((Board.NumX + 1) * squareSize);
+        tile.setMaxHeight((Board.NumY + 1) * squareSize);
+        var squares = game.getSquares();
         for (int y = Board.NumY - 1; y >= 0; --y) {
+            var lab = new Rectangle(squareSize, squareSize, Color.TRANSPARENT);
+            var text = new Label(String.valueOf(y + 1));
+            text.setFont(titleFont);
+            var labSp = new StackPane(lab, text);
+            tChild.add(labSp); // 1 - 8 on the left
             for (int x = 0; x < Board.NumX; ++x) {
                 Position pos = squares[x][y];
-                var isBlack = pos.isBlack;
-                var col = isBlack ? Color.rgb(0, 0, 0) : Color.rgb(255, 255, 255);
-                var sq = new Rectangle(squareSize, squareSize, col);
-                StackPane.setMargin(sq, Insets.EMPTY);
-                sq.setId(pos.toString());
-
-                var sp = new StackPane(sq);
-                sp.setId(pos.toString() + "_sp"); // uniquely identify the stack pange
-                sp.setMaxSize(squareSize, squareSize);
-                var piece = pos.piece;
-                if (piece != null) {
-                    Button pieceCtrl = makePieceButton(piece);
-                    sp.getChildren().add(pieceCtrl);
-                }
-
+                var sp = makeSquare(pos);
                 tChild.add(sp);
             }
+        }
+        var dummy = new Rectangle(squareSize, squareSize, Color.TRANSPARENT);
+        tChild.add(dummy);
+        for (int i = 0; i < Board.NumX; ++i) {
+            var lab = new Rectangle(squareSize, squareSize, Color.TRANSPARENT);
+            var text = new Label(String.valueOf((char) (i + 97)));
+            text.setFont(titleFont);
+            var labSp = new StackPane(lab, text);
+            tChild.add(labSp); // A- H at the bottom
         }
 
         // set BorderPane counterclockwise
@@ -320,7 +379,7 @@ public class App extends Application {
         border.setCenter(tile);
 
         scene = new Scene(border, 800, 600);
-        title.requestFocus();
+        // title.requestFocus();
         stage.setScene(scene);
         stage.setTitle("Chess2D");
         stage.show();
