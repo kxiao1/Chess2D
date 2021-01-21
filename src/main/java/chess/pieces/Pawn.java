@@ -10,7 +10,7 @@ public class Pawn extends Piece {
     }
 
     public void setAvailableMoves() {
-        // TODO
+
         var temp = new ArrayList<Move>();
         var ydisp = isBlack ? -1 : 1; // black pawns move down
 
@@ -23,7 +23,7 @@ public class Pawn extends Piece {
             temp.add(m);
         }
 
-        // left and right captures
+        // left and right captures, could be refactored as two-membered for loop
         ok = !(chessBoard.violatesBasicRules(pos, 1, ydisp)) && chessBoard.willHitOpponentPiece(pos, 1, ydisp);
         if (ok) {
             // check if can promote
@@ -53,5 +53,19 @@ public class Pawn extends Piece {
 
         // En Passant? TODO
         availableMoves = temp;
+    }
+
+    public ArrayList<Position> getAttackPath(Position KingPos) {
+        int xdisp[] = {-1, 1};
+        int y = isBlack ? -1 : 1; // black pawns move down
+
+        for (var x : xdisp)  {
+            var newX = pos.getX() + x;
+            var newY =  pos.getY() + y;
+            if (newX == KingPos.getX() && newY == KingPos.getY()) {
+                return new ArrayList<Position>(); // any attack is unblocked
+            }
+        }
+        return null; // not attacking
     }
 }
