@@ -98,9 +98,14 @@ public class App extends Application {
         // recalculate moves
         var hasMoves = game.getAllMoves();
         if (!hasMoves) {
-            // checkmate
-            checkedBox.setText("CHECKMATE");
-            var text = game.turn.toString() + " has been checkmated.";
+            String text;
+            if (game.checked) {
+                // checkmate
+                checkedBox.setText("CHECKMATE");
+                text = game.turn.toString() + " has been checkmated.";
+            } else {
+                text = game.turn.toString() + " has no more moves.\nStalemate.";
+            }
             var alert = new Alert(Alert.AlertType.INFORMATION, text);
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {

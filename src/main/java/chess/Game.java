@@ -6,11 +6,6 @@ import chess.pieces.*;
 enum Turn {
     BLACK, WHITE
 };
-
-enum Checked {
-    BlackChecked, WhiteChecked, NONE
-};
-
 class Game {
     Turn turn;
     ArrayList<String> logs;
@@ -20,7 +15,7 @@ class Game {
     ArrayList<Piece> oppPieces;
     ArrayList<Piece> capturedBlack;
     ArrayList<Piece> CapturedWhite;
-    Checked checked;
+    boolean checked;
     Board chessBoard;
 
     Game() {
@@ -32,7 +27,7 @@ class Game {
         oppPieces = blackPieces;
         capturedBlack = new ArrayList<Piece>();
         CapturedWhite = new ArrayList<Piece>();
-        checked = Checked.NONE;
+        checked = false;
 
         var squares = new Position[Board.NumX][];
         chessBoard = new Board(squares, whitePieces, blackPieces, turn);
@@ -102,7 +97,9 @@ class Game {
     }
 
     boolean isCheck() {
-        return chessBoard.isCheck();
+        var isCheck = chessBoard.isCheck();
+        checked = isCheck;
+        return isCheck;
     }
 
     // Updates state and returns captured piece if any
@@ -128,5 +125,26 @@ class Game {
 
         p.pos = endPos;
         return oppPiece;
+    }
+
+    // Castling TODO
+    Move makeCastle(Position pos) {
+        // given the final move of the rook, move the King as well
+        return null;
+    }
+
+    // Promotions TODO
+    Piece makeNewPiece(Position pos) {
+        // similar to a capture, but don't add to captured list
+
+        // return the new Queen
+        return null;
+    }
+
+    // En Passant TODO
+    Piece makeEnPassant(Move m) {
+        
+        // return captured piece
+        return null;
     }
 }
