@@ -88,10 +88,21 @@ class Game {
         chessBoard.switchTurns();
     }
 
-    void getAllMoves() {
+    boolean getAllMoves() {
+        int moveCount = 0;
         for (var p : ownPieces) {
             p.setAvailableMoves();
+            moveCount += p.getAvailableMoves().size();
         }
+        return (moveCount > 0);
+    }
+
+    Position[][] getSquares() {
+        return chessBoard.getSquares();
+    }
+
+    boolean isCheck() {
+        return chessBoard.isCheck();
     }
 
     // Updates state and returns captured piece if any

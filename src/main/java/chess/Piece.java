@@ -12,16 +12,21 @@ public abstract class Piece {
     protected ArrayList<Piece> ownPieces;
     protected ArrayList<Piece> oppPieces;
 
-    public Piece(Position pos, Pieces type) {
+    protected Piece(Position pos, Pieces type) {
         this.pos = pos;
         this.type = type;
         hasMoved = false;
         isBlack = Board.onBlackSide(pos);
     }
-    public ArrayList<Move> getAvailableMoves() {
+    
+    ArrayList<Move> getAvailableMoves() {
         return availableMoves;
     }
-    public abstract void setAvailableMoves();
+    protected abstract void setAvailableMoves();
+
+    // Returns the squares on the path from this piece to the King
+    // null if not attacking, empty array if not blocking
+    protected abstract ArrayList<Position> getAttackPath(Position KingPos);
 
     public String toString() {
         return type + "_" + (isBlack ? "black" : "white");

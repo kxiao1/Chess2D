@@ -24,19 +24,19 @@ public class Board {
             return Pieces.NONE;
         }
         switch (name.charAt(0)) {
-            case 'A':
+            case 'a':
                 return Pieces.ROOK;
-            case 'B':
+            case 'b':
                 return Pieces.KNIGHT;
-            case 'C':
+            case 'c':
                 return Pieces.BISHOP;
-            case 'D':
+            case 'd':
                 return Pieces.QUEEN;
-            case 'E':
+            case 'e':
                 return Pieces.KING;
-            case 'F':
+            case 'f':
                 return Pieces.BISHOP;
-            case 'G':
+            case 'g':
                 return Pieces.KNIGHT;
             default:
                 return Pieces.ROOK;
@@ -69,10 +69,9 @@ public class Board {
 
     // All pieces
     private boolean willHitOwnPiece(Position start, int x, int y) {
-        var newX = start.getX() + x;
-        var newY = start.getY() + y;
+        var newPos = new Position(start.getX() + x, start.getY() + y, null);
         for (var own : ownPieces) {
-            if (own.pos.getX() == newX && own.pos.getY() == newY) {
+            if (Position.samePos(own.pos, newPos)) {
                 return true;
             }
         }
@@ -87,55 +86,96 @@ public class Board {
         return !isValidPos(newX, newY);
     }
 
-    // All pieces: a move is not valid if it puts one under check TODO
-    private boolean willBeChecked(Position start, int x, int y) {
-        var canCheck = false;
+    // All pieces: a move is not valid if it puts one under check
+    public boolean willBeChecked(Position start, int x, int y) {
+        var newPos = new Position(start.getX() + x, start.getY() + y, null);
+        Position KingPos = null;
+        if (start.piece.type == Pieces.KING) {
+            KingPos = newPos;
+        } else {
+            for (var own : ownPieces) {
+                if (own.type == Pieces.KING) {
+                    KingPos = own.pos;
+                    break;
+                }
+            }
+        }
+        
         // for each of opponent's pieces,
+        // King: continue
+        // Pawn, Knight: (1) + (2)
+        // Rook, Bishop, Queen: (1) + (2) + (3) + (4)
         for (var opp : oppPieces) {
             if (opp.type == Pieces.KING) {
                 continue;
             }
 
             // (1) check that it will not be captured by this move
-
-            // (2) check that it attacks the king
-
-            // (3) check that existing own pieces that are not moved don't block it
-            // (4) check that the moved piece does not block it
-            for (var own : ownPieces) {
-
+            if (Position.samePos(opp.pos, newPos)) {
+                continue;
             }
-            // uncomment this: canCheck = true;
-            break;
+
+            // (2) check that it attacks the King
+            var path = opp.getAttackPath(KingPos);
+            if (path == null) {
+                continue;
+            }
+
+            if (opp.type == Pieces.PAWN || opp.type == Pieces.KNIGHT) {
+                return true;
+            }
+
+            // (3) check if existing pieces that are not moved can block it
+            boolean willBlock = false;
+            if (path.size() > 0) {
+                for (var pos : path) {
+                    var boardPos = squares[pos.getX()][pos.getY()];
+                    if (boardPos.piece != null) { // there is an own piece along the path
+                        if (!Position.samePos(boardPos, start)) { // this move did not remove the blocker
+                            willBlock = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // (4) check that the moved piece does not block it
+            if (!willBlock) {
+                for (var pos : path) {
+                    var boardPos = squares[pos.getX()][pos.getY()];
+                    if (Position.samePos(boardPos, newPos)) {
+                        willBlock = true;
+                        break;
+                    }
+                }
+            }
+            if (!willBlock) {
+                return true;
+            }
         }
 
-        // King: continue
-        // Pawn, Knight: (1) + (2)
-        // Rook, Bishop, Queen: (1) + (2) + (3) + (4)
-
-        return canCheck;
+        return false;
     }
 
-    // wrapper for above three checks
+    // Wrapper for above checking if a move is OOB, hits own piece, or results in a check
     public boolean violatesBasicRules(Position start, int x, int y) {
         return willBeOOB(start, x, y) || willHitOwnPiece(start, x, y) || willBeChecked(start, x, y);
     }
 
     // Pawn when moving forward/ capturing
     public boolean willHitOpponentPiece(Position start, int x, int y) {
-        var newX = start.getX() + x;
-        var newY = start.getY() + y;
-        for (var own : oppPieces) {
-            if (own.pos.getX() == newX && own.pos.getY() == newY) {
+        var newPos = new Position(start.getX() + x, start.getY() + y, null);
+        for (var opp : oppPieces) {
+            if (Position.samePos(newPos, opp.pos)) {
                 return true;
             }
         }
         return false;
     }
 
-    // applicable to Rook, Bishop, and Queen
-    public boolean willPassOtherPieces(Position start, int x, int y) {
-        return false; // TODO
+    // Wrapper that is applicable to Rook, Bishop, and Queen
+    public boolean cannotReachDestination(Position start, int x, int y) {
+        return willBeOOB(start, x, y) || willHitOwnPiece(start, x, y);
     }
 
     public boolean canCastle(Position start) {
@@ -148,9 +188,48 @@ public class Board {
         return (newY == 0 || newY == (NumY - 1));
     }
 
-    // needs to be done after a move is made TODO
+    // needs to be done after a move is made and before the turn changes
     public boolean isCheck() {
-        // loop through each of one's pieces to see if it attacks the King
+        // loop through each of ownPieces to see if it attacks the opponent's King
+        Position KingPos = null;
+        for (var opp: oppPieces) {
+            if (opp.type == Pieces.KING) {
+                KingPos = opp.pos;
+            }
+        }
+
+        // for each of ownPieces,
+        for (var own : ownPieces) {
+            if (own.type == Pieces.KING) {
+                continue;
+            } 
+
+            // check that it attacks the King
+            var path = own.getAttackPath(KingPos);
+            if (path == null) {
+                continue;
+            }
+
+            if (own.type == Pieces.PAWN || own.type == Pieces.KNIGHT) {
+                return true;
+            }
+            
+            // check if a piece blocks along the path
+            boolean willBlock = false;
+            if (path.size() > 0) {
+                for (var pos : path) {
+                    var boardPos = squares[pos.getX()][pos.getY()];
+                    if (boardPos.piece != null) { // there is an own piece along the path
+                        willBlock = true;
+                        break;
+                    }
+                }
+            }
+            if (!willBlock) {
+                return true;
+            }
+        }
+
         return false;
     }
 
