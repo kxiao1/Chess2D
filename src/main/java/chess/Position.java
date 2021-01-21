@@ -10,13 +10,17 @@ public class Position {
 
     public static boolean samePos(Position pos1, Position pos2) {
         if (pos1 == null || pos2 == null) {
-            return false;
+            var errStr = (pos1 == null ? "Pos1" : "Pos2") + " is null.";
+            throw new NullPointerException(errStr);
         }
         return (pos1.getX() == pos2.getX() && pos1.getY() == pos2.getY());
     }
 
     public Position(int x, int y, Piece piece) {
-        assert(Board.isValidPos(x,y));
+        if (!Board.isValidPos(x, y)) {
+            var errStr = "The position (" + x + "," + y + ") is invalid.";
+            throw new ArrayIndexOutOfBoundsException(errStr);
+        }
         this.x = x;
         this.y = y;
         this.name = String.valueOf((char)(x + 97)) + (y + 1);

@@ -9,7 +9,13 @@ public class Board {
     static boolean isValidPos(int x, int y) {
         return (x >= 0 && x <= 7 && y >= 0 && y <= 7);
     }
-
+    // overloading
+    static boolean isValidPos(Position pos) {
+        if (pos == null) {
+            throw new NullPointerException("Position is null.");
+        }
+        return isValidPos(pos.getX(), pos.getY());
+    }
     // check if piece is on black side of the board
     static boolean onBlackSide(Position pos) {
         return pos.getY() >= 4;
