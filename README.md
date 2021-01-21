@@ -5,9 +5,9 @@ Built with JavaFX and Maven.
 - [x] Board Layout
 - [x] Graphics for Chess Pieces
 - [x] Highlighting Possible Moves
-- [ ] Piece Logic
-- [ ] Check for Checks
-- [ ] Captures 
+- [x] Piece Logic
+- [x] Check for Checks
+- [x] Captures 
 - [ ] Promoting
 - [ ] Castling 
 - [ ] En Passant
