@@ -8,11 +8,18 @@ public class Position {
     boolean isLastRow;
     boolean isBlack;
 
-    Position(int x, int y, Piece piece) {
+    public static boolean samePos(Position pos1, Position pos2) {
+        if (pos1 == null || pos2 == null) {
+            return false;
+        }
+        return (pos1.getX() == pos2.getX() && pos1.getY() == pos2.getY());
+    }
+
+    public Position(int x, int y, Piece piece) {
         assert(Board.isValidPos(x,y));
         this.x = x;
         this.y = y;
-        this.name = String.valueOf((char)(x + 65)) + (y + 1);
+        this.name = String.valueOf((char)(x + 97)) + (y + 1);
         this.piece = piece;
         
         isLastRow = (y == 0 || y == (Board.NumY-1));
