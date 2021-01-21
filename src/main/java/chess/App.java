@@ -99,6 +99,7 @@ public class App extends Application {
         var hasMoves = game.getAllMoves();
         if (!hasMoves) {
             // checkmate
+            checkedBox.setText("CHECKMATE");
             var text = game.turn.toString() + " has been checkmated.";
             var alert = new Alert(Alert.AlertType.INFORMATION, text);
             Optional<ButtonType> result = alert.showAndWait();
@@ -266,9 +267,27 @@ public class App extends Application {
         return sp;
     }
 
-    private void initUI(Stage stage) {
+    private void showErrorDialog(Thread t, Throwable e) {
+        e.printStackTrace();
+        var text = "A Fatal Error has Occurred in the App. Please restart.";
+        var alert = new Alert(Alert.AlertType.ERROR, text);
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            // disable the board
+            var b = (TilePane) scene.lookup("#chessboard");
+            b.setDisable(true);
+
+            // prompt a restart
+            var ctrl = (Button) scene.lookup("#restartBtn");
+            ctrl.requestFocus();
+        }
+    }
+
+    private void initUI(Stage stage, boolean shouldStartGame) {
 
         game = new Game();
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> Platform.runLater(() -> showErrorDialog(t, e)));
+        // https://stackoverflow.com/questions/25145956/how-can-i-create-a-default-exception-handler-that-uses-javafx
 
         // bottom
         var javaVersion = SystemInfo.javaVersion();
@@ -314,7 +333,7 @@ public class App extends Application {
         var restartBtn = new Button("Restart");
         restartBtn.setId("restartBtn");
         restartBtn.setOnAction(e -> {
-            initUI(stage);
+            initUI(stage, true);
         });
         restartBtn.setMaxWidth(Double.MAX_VALUE);
 
@@ -383,11 +402,15 @@ public class App extends Application {
         stage.setScene(scene);
         stage.setTitle("Chess2D");
         stage.show();
+
+        if (shouldStartGame) {
+            startBtn.fire();
+        }
     }
 
     @Override
     public void start(Stage stage) {
-        initUI(stage);
+        initUI(stage, false);
     }
 
     public static void main(String[] args) {
