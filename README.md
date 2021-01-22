@@ -9,10 +9,9 @@ Built with JavaFX and Maven.
 - [x] Check for Checks
 - [x] Captures 
 - [ ] Promoting
-- [ ] Castling 
+- [x] Castling 
 - [ ] En Passant
 - [ ] Algebraic Notation and Outputing Logs
-- [ ] Game Cycle
 - [ ] Timer
 - [x] Restarts
 - [ ] Undos
@@ -22,5 +21,9 @@ Built with JavaFX and Maven.
 After cloning the repository, ensure that ``JDK``, ``JRE``, and Maven are available (there's no need to explicitly install JavaFX). Then run the following command:
 
 ``mvn clean javafx:run``
+
+To castle, move the King and not the Rook. 
+
 ## Known issues
 - Linux users: make sure xdg-open is installed (``sudo apt install xdg-utils``)
+

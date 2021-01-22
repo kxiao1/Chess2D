@@ -46,8 +46,9 @@ public class Rook extends Piece {
             }
 
         }
-        // TODO castle
 
+        // castling handled by Game and Board
+        
         availableMoves = temp;
     }
 

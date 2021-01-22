@@ -87,6 +87,12 @@ class Game {
         int moveCount = 0;
         for (var p : ownPieces) {
             p.setAvailableMoves();
+            if (p.type == Pieces.KING && !isCheck()) {
+                var m = chessBoard.makeCastlingMove(p.pos);
+                if (m != null) {
+                    p.getAvailableMoves().addAll(m);
+                }
+            }
             moveCount += p.getAvailableMoves().size();
         }
         return (moveCount > 0);
@@ -127,10 +133,29 @@ class Game {
         return oppPiece;
     }
 
-    // Castling TODO
-    Move makeCastle(Position pos) {
-        // given the final move of the rook, move the King as well
-        return null;
+    // Given the final position of the King, move the Rook as well
+    Move makeCastle(Position KingPos) {
+        Move rookMove = null;
+        Position rookPosStart = null;
+        switch(KingPos.getX()) {
+            case 2: 
+                rookPosStart = chessBoard.getSquares()[0][KingPos.getY()];
+                rookMove = chessBoard.createMove(Pieces.ROOK.toString(), rookPosStart, 3, 0, Action.NONE);
+                break;
+            case 6:
+                rookPosStart = chessBoard.getSquares()[7][KingPos.getY()];
+                rookMove = chessBoard.createMove(Pieces.ROOK.toString(), rookPosStart, -2, 0, Action.NONE);
+                break;
+            default:
+                throw new IllegalArgumentException("The King is in the wrong column.");
+        }
+        var rook = rookPosStart.piece;
+        rook.hasMoved = true;
+        var rookPosEnd = rookMove.new_pos;
+        rookPosStart.piece = null;
+        rookPosEnd.piece = rook;
+        rook.pos = rookPosEnd;
+        return rookMove;
     }
 
     // Promotions TODO

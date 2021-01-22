@@ -59,10 +59,9 @@ public class App extends Application {
         var pc = (Button) sp.lookup("#" + p.toString());
         sp.getChildren().remove(pc);
 
-        var pcNew = makePieceButton(p);
         var endPos = move.new_pos;
         var spNew = (StackPane) scene.lookup("#" + endPos.toString() + "_sp");
-        spNew.getChildren().add(pcNew);
+        spNew.getChildren().add(pc);
 
         // account for captures
         var capturedPiece = game.makeMoveAndCapture(move);
@@ -74,7 +73,29 @@ public class App extends Application {
             cap.setText(String.valueOf((char) newChar));
         }
 
-        // TODO: account for Promotions, Castling, and En Passant
+        // TODO: account for Promotions and En Passant
+        switch (move.action) {
+            case CASTLE: {
+                var rookMove = game.makeCastle(endPos);
+                var startPosRook = rookMove.old_pos;
+                var endPosRook = rookMove.new_pos;
+                var rook = endPosRook.piece;
+                var spRook = (StackPane) scene.lookup("#" + startPosRook.toString() + "_sp");
+                var pcRook = (Button) spRook.lookup("#" + rook.toString());
+                spRook.getChildren().remove(pcRook);
+
+                var spRookNew = (StackPane) scene.lookup("#" + endPosRook.toString() + "_sp");
+                spRookNew.getChildren().add(pcRook);
+                break;
+            }
+            case PROMOTE: {
+                break;
+            }
+            case ENPASSANT: {
+                break;
+            }
+            default:
+        }
 
         // account for checks
         var checkedBox = (Label) scene.lookup("#checkedBox");
@@ -162,10 +183,10 @@ public class App extends Application {
                 var pc = (Button) sp.lookup("#" + pos.piece.toString());
                 pc.setDisable(true);
                 pc.setOnAction(e -> pcSrc(pos.piece));
-            } else {
-                // remove the rectangle's handler
-                sq.setOnMouseClicked(null);
             }
+            
+            // remove the rectangle's handler
+            sq.setOnMouseClicked(null);
         }
 
         // reset the list
@@ -274,7 +295,7 @@ public class App extends Application {
 
     private void showErrorDialog(Thread t, Throwable e) {
         e.printStackTrace();
-        var text = "A Fatal Error has Occurred in the App. Please restart.";
+        var text = "A Fatal Error has Occurred in the App.\nPlease restart.";
         var alert = new Alert(Alert.AlertType.ERROR, text);
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {

@@ -9,6 +9,7 @@ public class Board {
     static boolean isValidPos(int x, int y) {
         return (x >= 0 && x <= 7 && y >= 0 && y <= 7);
     }
+
     // overloading
     static boolean isValidPos(Position pos) {
         if (pos == null) {
@@ -16,6 +17,7 @@ public class Board {
         }
         return isValidPos(pos.getX(), pos.getY());
     }
+
     // check if piece is on black side of the board
     static boolean onBlackSide(Position pos) {
         return pos.getY() >= 4;
@@ -106,7 +108,7 @@ public class Board {
                 }
             }
         }
-        
+
         // for each of opponent's pieces,
         // King: continue
         // Pawn, Knight: (1) + (2)
@@ -163,7 +165,8 @@ public class Board {
         return false;
     }
 
-    // Wrapper for above checking if a move is OOB, hits own piece, or results in a check
+    // Wrapper for above checking if a move is OOB, hits own piece, or results in a
+    // check
     public boolean violatesBasicRules(Position start, int x, int y) {
         return willBeOOB(start, x, y) || willHitOwnPiece(start, x, y) || willBeChecked(start, x, y);
     }
@@ -184,8 +187,39 @@ public class Board {
         return willBeOOB(start, x, y) || willHitOwnPiece(start, x, y);
     }
 
-    public boolean canCastle(Position start) {
-        return false; // TODO
+    // REQUIRES: not under check
+    public ArrayList<Move> makeCastlingMove(Position start) {
+        var moves = new ArrayList<Move>();
+        if (start.piece.type == Pieces.KING && !(start.piece.hasMoved)) {
+            Piece king = start.piece;
+            for (var own : ownPieces) {
+                if (own.type == Pieces.ROOK && !own.hasMoved) {
+                    // both King and Rook must not have moved
+                    var rook = own;
+                    var path = rook.getAttackPath(king.pos); // hacky
+                    var modPath = path.subList(path.size() - 2, path.size());
+                    var isBlocked = false;
+                    var willBeChecked = false;
+                    for (var pos : modPath) {
+                        var boardPos = squares[pos.getX()][pos.getY()];
+                        if (boardPos.piece != null) { // the square is occupied
+                            isBlocked = true;
+                            break;
+                        }
+                        var xdisp = boardPos.getX() - king.pos.getX();
+                        if (willBeChecked(king.pos, xdisp, 0)) { // the king will be checked
+                            willBeChecked = true;
+                            break;
+                        }
+                    }
+                    if (!(isBlocked || willBeChecked)) {
+                        var finalPos = squares[modPath.get(0).getX()][modPath.get(0).getY()];
+                        moves.add(new Move(king.toString(), king.pos, finalPos, Action.CASTLE));
+                    }
+                }
+            }
+        }
+        return moves;
     }
 
     // assumes that the move is legal
@@ -198,7 +232,7 @@ public class Board {
     public boolean isCheck() {
         // loop through each of ownPieces to see if it attacks the opponent's King
         Position KingPos = null;
-        for (var opp: oppPieces) {
+        for (var opp : oppPieces) {
             if (opp.type == Pieces.KING) {
                 KingPos = opp.pos;
             }
@@ -208,7 +242,7 @@ public class Board {
         for (var own : ownPieces) {
             if (own.type == Pieces.KING) {
                 continue;
-            } 
+            }
 
             // check that it attacks the King
             var path = own.getAttackPath(KingPos);
@@ -219,7 +253,7 @@ public class Board {
             if (own.type == Pieces.PAWN || own.type == Pieces.KNIGHT) {
                 return true;
             }
-            
+
             // check if a piece blocks along the path
             boolean willBlock = false;
             if (path.size() > 0) {
