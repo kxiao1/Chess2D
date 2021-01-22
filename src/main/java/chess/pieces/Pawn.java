@@ -39,7 +39,7 @@ public class Pawn extends Piece {
             temp.add(m);
         }
 
-        // passed pawn?
+        // can move two squares?
         if (!hasMoved) {
             ok = !(chessBoard.violatesBasicRules(pos, 0, 2 * ydisp)
                     || chessBoard.willHitOpponentPiece(pos, 0, 2 * ydisp));
@@ -51,7 +51,8 @@ public class Pawn extends Piece {
             }
         }
 
-        // En Passant? TODO
+        // En Passant: can only be done if previous opp move was passed pawn
+        // TODO
         availableMoves = temp;
     }
 
