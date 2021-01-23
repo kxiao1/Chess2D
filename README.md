@@ -22,8 +22,8 @@ After cloning the repository, ensure that ``JDK``, ``JRE``, and Maven are availa
 
 ``mvn clean javafx:run``
 
-To castle, move the King and not the Rook. 
-
+- To castle, move the King and not the Rook. 
+- Algebraic Notation follows Portable Game Notation (PGN) but is intentionally verbose: the starting position is always specified.
 ## Known issues
-- Linux users: make sure xdg-open is installed (``sudo apt install xdg-utils``)
+- Linux users: make sure ``xdg-open`` is installed (e.g.``sudo apt install xdg-utils``)
 

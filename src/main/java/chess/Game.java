@@ -1,5 +1,8 @@
 package chess;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import chess.pieces.*;
 
@@ -8,6 +11,7 @@ enum Turn {
 };
 class Game {
     Turn turn;
+    int turnNo;
     ArrayList<String> logs;
     ArrayList<Piece> whitePieces;
     ArrayList<Piece> blackPieces;
@@ -20,6 +24,7 @@ class Game {
 
     Game() {
         turn = Turn.WHITE;
+        turnNo = 1;
         logs = new ArrayList<String>();
         blackPieces = new ArrayList<Piece>();
         whitePieces = new ArrayList<Piece>();
@@ -77,6 +82,9 @@ class Game {
     }
 
     void switchTurn() {
+        if (turn == Turn.BLACK) {
+            turnNo++;
+        }
         turn = turn == Turn.BLACK ? Turn.WHITE : Turn.BLACK;
         ownPieces = turn == Turn.WHITE ? whitePieces : blackPieces;
         oppPieces = turn == Turn.WHITE ? blackPieces : whitePieces;
@@ -108,6 +116,38 @@ class Game {
         return isCheck;
     }
 
+    void addToLogs(Move m) {
+        var mName = m.toString();
+        if (checked) {
+            mName = mName.concat("+");
+        }
+        if (turn == Turn.WHITE) {
+            var newEntry = turnNo + ". " + mName + " "; 
+            logs.add(newEntry);
+        } else {
+            var currEntry = logs.remove(logs.size() - 1);
+            var appendedEntry = currEntry + mName + " ";
+            logs.add(appendedEntry);
+        }
+    }
+
+    void indicateCheckmate() {
+        var lastEntry = logs.remove(logs.size() - 1);
+        lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# " 
+                    + (turn == Turn.BLACK ? "1-0" : "0-1");
+        logs.add(lastEntry);
+    }
+
+    void saveLogs() {
+        try (var log = new BufferedWriter(new FileWriter("logs.txt"))) {
+            for (var line : logs) {
+                log.write(line); 
+            }
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+    }
+
     // Updates state and returns captured piece if any
     Piece makeMoveAndCapture(Move m) {
         var startPos = m.old_pos;
@@ -130,6 +170,7 @@ class Game {
         endPos.piece = p;
 
         p.pos = endPos;
+
         return oppPiece;
     }
 
@@ -140,11 +181,11 @@ class Game {
         switch(KingPos.getX()) {
             case 2: 
                 rookPosStart = chessBoard.getSquares()[0][KingPos.getY()];
-                rookMove = chessBoard.createMove(Pieces.ROOK.toString(), rookPosStart, 3, 0, Action.NONE);
+                rookMove = chessBoard.createMove(rookPosStart.piece.toString(), rookPosStart, 3, 0, Action.NONE);
                 break;
             case 6:
                 rookPosStart = chessBoard.getSquares()[7][KingPos.getY()];
-                rookMove = chessBoard.createMove(Pieces.ROOK.toString(), rookPosStart, -2, 0, Action.NONE);
+                rookMove = chessBoard.createMove(rookPosStart.piece.toString(), rookPosStart, -2, 0, Action.NONE);
                 break;
             default:
                 throw new IllegalArgumentException("The King is in the wrong column.");

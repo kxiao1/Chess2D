@@ -73,6 +73,12 @@ public class App extends Application {
             cap.setText(String.valueOf((char) newChar));
         }
 
+        // check for Checks
+        var checked = game.isCheck();
+
+        // add move to logs
+        game.addToLogs(move);
+
         // TODO: account for Promotions and En Passant
         switch (move.action) {
             case CASTLE: {
@@ -101,8 +107,8 @@ public class App extends Application {
         var checkedBox = (Label) scene.lookup("#checkedBox");
         // assuming the move is valid, the current side is not under check
         checkedBox.setVisible(false);
-        // check if the opponent is now check
-        if (game.isCheck()) {
+        // indicate if the opponent is now under check
+        if (checked) {
             checkedBox.setVisible(true);
         }
 
@@ -120,16 +126,20 @@ public class App extends Application {
         var hasMoves = game.getAllMoves();
         if (!hasMoves) {
             String text;
-            if (game.checked) {
+            if (checked) {
                 // checkmate
                 checkedBox.setText("CHECKMATE");
-                text = game.turn.toString() + " has been checkmated.";
+                game.indicateCheckmate();
+                text = game.turn.toString() + " has been checkmated.\nSave logs to " + System.getProperty("user.dir") + "/logs.txt?";
             } else {
-                text = game.turn.toString() + " has no more moves.\nStalemate.";
+                text = game.turn.toString() + " has no more moves.\nStalemate.\nSave logs to " + System.getProperty("user.dir") + "/logs.txt?";
             }
-            var alert = new Alert(Alert.AlertType.INFORMATION, text);
+            var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             Optional<ButtonType> result = alert.showAndWait();
-            if (result.isPresent() && result.get() == ButtonType.OK) {
+            if (result.isPresent()) {
+                if (result.get() == ButtonType.OK) {
+                    game.saveLogs();
+                }    
                 // disable the board
                 var b = (TilePane) scene.lookup("#chessboard");
                 b.setDisable(true);
@@ -316,8 +326,8 @@ public class App extends Application {
         // https://stackoverflow.com/questions/25145956/how-can-i-create-a-default-exception-handler-that-uses-javafx
 
         // bottom
-        var javaVersion = SystemInfo.javaVersion();
-        var javafxVersion = SystemInfo.javafxVersion();
+        var javaVersion = System.getProperty("java.version");
+        var javafxVersion = System.getProperty("javafx.version");
         var info = new Label("App developed with JavaFX " + javafxVersion + " and Java " + javaVersion + ".");
         info.setFont(defaultFont);
         var link = new Hyperlink("View the source code.");
@@ -363,7 +373,16 @@ public class App extends Application {
         });
         restartBtn.setMaxWidth(Double.MAX_VALUE);
 
-        var saveBtn = new Button("Save (TODO)");
+        var saveBtn = new Button("Save");
+        saveBtn.setOnAction(e -> {
+            game.saveLogs();
+            var text = "Save logs to " + System.getProperty("user.dir") +"/logs.txt?";
+            var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
+            var result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+                game.saveLogs();;
+            }
+        });
         saveBtn.setMaxWidth(Double.MAX_VALUE);
 
         var quitBtn = new Button("Quit");
