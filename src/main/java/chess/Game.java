@@ -39,7 +39,7 @@ class Game {
         uncastleKingMove = null;
         capturedPieceToRestore = null;
         checked = false;
-        isCheckmated = true;
+        isCheckmated = false;
 
         var squares = new Position[Board.NumX][];
         chessBoard = new Board(squares, whitePieces, blackPieces, turn);
@@ -102,7 +102,7 @@ class Game {
         int moveCount = 0;
         for (var p : ownPieces) {
             p.setAvailableMoves();
-            if (p.type == Pieces.KING && !isCheck()) {
+            if (p.type == Pieces.KING && !checked) {
                 var m = chessBoard.makeCastlingMove(p.pos);
                 if (m != null) {
                     p.getAvailableMoves().addAll(m);
@@ -117,6 +117,10 @@ class Game {
         return chessBoard.getSquares();
     }
 
+    String printBoard() {
+        return chessBoard.toString();
+    }
+
     boolean isCheck() {
         var isCheck = chessBoard.isCheck();
         checked = isCheck;
@@ -128,7 +132,7 @@ class Game {
         if (checked) {
             mName = mName.concat("+");
         }
-        if (turn == Turn.WHITE) {
+        if (turn == Turn.BLACK) {
             var newEntry = turnNo + ". " + mName + " ";
             logs.add(newEntry);
         } else {
@@ -155,7 +159,26 @@ class Game {
         }
     }
 
+    // Account for the extra turn increment after NOP move
+    void switchTurnNoOp() {
+        turnNo--;
+    }
+
     void resetPieceStateUndo(Piece p) {
+
+        // put the captured piece (if any) back to the board
+        if (capturedPieceToRestore != null) {
+            var pos = capturedPieceToRestore.pos;
+            pos.piece = capturedPieceToRestore;
+            if (pos.piece.isBlack) {
+                blackPieces.add(pos.piece);
+            } else {
+                whitePieces.add(pos.piece);
+            }
+            capturedPieceToRestore = null;
+        }
+
+        // mark piece as not moved
         if (p.turnFirstMoved == -1) {
             p.turnFirstMoved = 0; // back to normal unmoved
             p.hasMoved = false;
@@ -170,26 +193,42 @@ class Game {
         return uncastleKingMove;
     }
 
+    // Make special NOP with same starting and ending position
+    Move getNoOpKingMove() {
+        Piece king = null;
+        Position kingPos = null;
+        for (var own : ownPieces) {
+            if (own.type == Pieces.KING) {
+                king = own;
+                kingPos = king.pos;
+            }
+        }
+        return new Move(king.toString(), kingPos, kingPos, Action.NONE);
+    }
+
     Move undoMove() {
         if (logs.size() == 0) {
             // cannot undo from first move
             return null;
         }
 
-        // switch the player here too, becaujse it gets 'switched back' in
-        // App.makeMove()
+        // switch the player here too, because we started this undo in the
+        // other player's turn
         switchTurn();
 
-        // account for the extra turn increment when switchTurn is called twice,
-        // once here and once in App.makeMove()
+        // go back to the correct turn number
         turnNo--;
 
         // use string parsing
         var mText = logs.remove(logs.size() - 1);
+
         if (isCheckmated) {
             isCheckmated = false;
-            mText = mText.substring(0, mText.length() - 4);
+            mText = mText.substring(0, mText.length() - 3);
         }
+
+        // strip off trailing space
+        mText = mText.substring(0, mText.length() - 1);
 
         // a checkmate is also a check
         if (checked) {
@@ -198,7 +237,23 @@ class Game {
 
         // last move was castling: unmove King manually here and return rook move
         // the app will process the rook move and render the reverted King move
-        int isCastle = mText.equals("O-O-O") ? 2 : (mText.equals("O-O") ? 1 : 0);
+        int isCastle = 0;
+        if (mText.substring(mText.length() - 5).equals("O-O-O")) {
+            isCastle = 2;
+            if (turn == Turn.BLACK) {
+                // push the white half of the turn back to logs
+                mText = mText.substring(0, mText.length() - 5);
+                logs.add(mText);
+            } 
+        }
+        if (mText.substring(mText.length() - 3).equals("O-O")) {
+            isCastle = 1;
+            if (turn == Turn.BLACK) {
+                // push the white half of the turn back to logs
+                mText = mText.substring(0, mText.length() - 3);
+                logs.add(mText);
+            }
+        }
         if (isCastle > 0) {
             Position KingPosEnd = null;
             for (var own : ownPieces) {
@@ -255,21 +310,26 @@ class Game {
 
         var startPosStr = mText.substring(mText.length() - 2);
         var startPos = chessBoard.getSquares()[Position.getXFromString(startPosStr)][Position
-                .getYFromString(startPosStr)];
+                .getYFromString(startPosStr)];        
 
         var piece = endPos.piece;
-
         // set correct hasMoved
         if (piece.turnFirstMoved == turnNo) {
             piece.turnFirstMoved = -1;
         }
 
+        // push the white half of the turn back to logs
+        if (turn == Turn.BLACK) {
+            var numToCut = piece.type == Pieces.PAWN ? 2 : 3;    
+            mText = mText.substring(0, mText.length() - numToCut);
+            logs.add(mText);
+        }
+
         // un-capture if needed, includes un-En Passant case
         if (isCapture) {
-            var capPieces = turn == Turn.WHITE ? capturedWhite : capturedBlack;
+            var capPieces = turn == Turn.WHITE ? capturedBlack : capturedWhite;
             Piece capPiece = capPieces.remove(capPieces.size() - 1);
             capturedPieceToRestore = capPiece;
-            capPiece.pos.piece = capPiece;
         }
 
         // un-promote if needed TODO
@@ -283,18 +343,26 @@ class Game {
         }
 
         // note that the captured piece could have already been restored
-        if (endPos.piece == piece) {
-            endPos.piece = null;
-        }
-        startPos.piece = piece;
-        piece.pos = startPos;
+        // if (endPos.piece == piece) {
+        //     endPos.piece = null;
+        // }
+        // startPos.piece = piece;
+        // piece.pos = startPos;
 
         // return a new move
+        if (isCapture) {
+            return new Move(piece.toString(), endPos, startPos, Action.UNCAPTURE);
+        }
         return new Move(piece.toString(), endPos, startPos, Action.NONE);
     }
 
     // Updates state and returns captured piece if any
     Piece makeMoveAndCapture(Move m) {
+        // if start and end pos are the same, the NOP move should not change state
+        if (Position.samePos(m.old_pos, m.new_pos)) {
+            return null;
+        }
+
         var startPos = m.old_pos;
         var p = startPos.piece;
         if (p.turnFirstMoved == 0 && !p.hasMoved) {

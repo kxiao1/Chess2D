@@ -14,7 +14,7 @@ public class Position {
     }
     static int getYFromString(String str) {
         var chr = str.charAt(1);
-        return Character.getNumericValue(chr);
+        return Character.getNumericValue(chr) - 1;
     }
 
     public static boolean samePos(Position pos1, Position pos2) {

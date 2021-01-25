@@ -52,14 +52,15 @@ public class App extends Application {
 
     private void makeUncastle(Move move) {
         var kingMove = game.getUncastleKingMove();
-        var kingPos = kingMove.old_pos;
-        var king = kingPos.piece;
-        var sp = (StackPane) scene.lookup("#" + kingPos.toString() + "_sp");
+        var oldKingPos = kingMove.old_pos;
+        var newKingPos = kingMove.new_pos;
+
+        var king = newKingPos.piece;
+        var sp = (StackPane) scene.lookup("#" + oldKingPos.toString() + "_sp");
         var pc = (Button) sp.lookup("#" + king.toString());
         sp.getChildren().remove(pc);
 
-        var newPos = kingMove.new_pos;
-        var spNew = (StackPane) scene.lookup("#" + newPos.toString() + "_sp");
+        var spNew = (StackPane) scene.lookup("#" + newKingPos.toString() + "_sp");
         spNew.getChildren().add(pc);
     }
 
@@ -73,6 +74,9 @@ public class App extends Application {
         var pc = makePieceButton(capPiece);
         var sp = (StackPane) scene.lookup("#" + pos.toString() + "_sp");
         sp.getChildren().add(pc);
+        var cap = (Label) scene.lookup("#Cap_" + capPiece.toString());
+        var newChar = (int) cap.getText().charAt(0) - 1;
+        cap.setText(String.valueOf((char) newChar));
     }
 
     private void makeMove(Move move) {
@@ -141,24 +145,28 @@ public class App extends Application {
         // switch players
         game.switchTurn();
         var title = (Label) scene.lookup("#titleText");
-        title.setText(game.turn.toString() + " to play.");
+        title.setText(game.turn.toString() + " to Play.");
         title.requestFocus();
 
         // recalculate moves
         var hasMoves = game.getAllMoves();
         if (!hasMoves) {
             String text;
+            String header;
             if (checked) {
                 // checkmate
                 checkedBox.setText("CHECKMATE");
                 game.indicateCheckmate();
                 text = game.turn.toString() + " has been checkmated.\nSave logs to " + System.getProperty("user.dir")
                         + "/logs.txt?";
+                header = "Checkmate!";
             } else {
                 text = game.turn.toString() + " has no more moves.\nStalemate.\nSave logs to "
                         + System.getProperty("user.dir") + "/logs.txt?";
+                header = "Stalemate!";
             }
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
+            alert.setHeaderText(header);
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent()) {
                 if (result.get() == ButtonType.OK) {
@@ -176,6 +184,45 @@ public class App extends Application {
             // enable all of other player's buttons
             activatePieces(game.turn);
         }
+    }
+
+    private void makeUndo() {
+        // disable all of current player's buttons
+        unHighlight();
+        deactivatePieces(game.turn);
+
+        // the reversed undoing move
+        var toUndo = game.undoMove();
+        if (toUndo == null) {
+            throw new NullPointerException("There is no move to undo!");
+        }
+
+        // additional actions, if any TODO
+        switch (toUndo.action) {
+            case UNCASTLE:
+                makeUncastle(toUndo);
+                break;
+            case UNPROMOTE:
+                makeUnpromote(toUndo);
+                break;
+            case UNPROMOTEandUNCAPTURE:
+                makeUnpromote(toUndo);
+                makeUncapture();
+                break;
+            case UNCAPTURE:
+                makeUncapture();
+                break;
+            default:
+                break;
+        }
+
+        makeMove(toUndo);
+        game.resetPieceStateUndo(toUndo.new_pos.piece);
+
+        // to ensure that the player that undid his move gets to move
+        // again next, make a no-op move for the other player
+        makeMove(game.getNoOpKingMove());
+        game.switchTurnNoOp();
     }
 
     // pick a piece as the source move
@@ -198,8 +245,8 @@ public class App extends Application {
                 var pc = (Button) sp.lookup("#" + pos.piece.toString());
                 pc.setDisable(false);
                 pc.setOnAction(e -> {
-                    game.addToLogs(move);
                     makeMove(move);
+                    game.addToLogs(move);
                     if (game.turn == Turn.BLACK && game.turnNo == 1) {
                         var restartBtn = (Button) scene.lookup("#restartBtn");
                         var undoBtn = (Button) scene.lookup("#undoBtn");
@@ -210,8 +257,8 @@ public class App extends Application {
             } else {
                 // if not occupied, add the pickdest event handler
                 sq.setOnMouseClicked(e -> {
-                    game.addToLogs(move);
                     makeMove(move);
+                    game.addToLogs(move);
                     if (game.turn == Turn.BLACK && game.turnNo == 1) {
                         var restartBtn = (Button) scene.lookup("#restartBtn");
                         var undoBtn = (Button) scene.lookup("#undoBtn");
@@ -232,9 +279,10 @@ public class App extends Application {
 
             if (pos.piece != null) {
                 // disable and restore original handler
-                var pc = (Button) sp.lookup("#" + pos.piece.toString());
+                var p = pos.piece;
+                var pc = (Button) sp.lookup("#" + p.toString());
                 pc.setDisable(true);
-                pc.setOnAction(e -> pcSrc(pos.piece));
+                pc.setOnAction(e -> pcSrc(p));
             }
 
             // remove the rectangle's handler
@@ -347,7 +395,7 @@ public class App extends Application {
 
     private void showErrorDialog(Thread t, Throwable e) {
         e.printStackTrace();
-        var text = "A Fatal Error has Occurred in the App.\nPlease restart.";
+        var text = "A Fatal Error has occurred in the App.\nPlease restart.";
         var alert = new Alert(Alert.AlertType.ERROR, text);
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -393,8 +441,8 @@ public class App extends Application {
         ; // by default this text should be invisible
 
         var Toolbar = new VBox(10, title, checkedBox);
-        Toolbar.setPadding(new Insets(5));
-        Toolbar.setAlignment(Pos.CENTER);
+        Toolbar.setPadding(new Insets(20, 5, 5, 5));
+        Toolbar.setAlignment(Pos.BOTTOM_CENTER);
 
         // left: gameplay buttons
         var startBtn = new Button("Start");
@@ -408,40 +456,9 @@ public class App extends Application {
         });
         startBtn.setMaxWidth(Double.MAX_VALUE);
 
-        var undoBtn = new Button("Undo (TODO)");
+        var undoBtn = new Button("Undo");
         undoBtn.setId("undoBtn");
-        undoBtn.setOnAction(e -> {
-            // disable all of current player's buttons
-            unHighlight();
-            deactivatePieces(game.turn);
-            
-            var toUndo = game.undoMove();
-            if (toUndo == null) {
-                throw new NullPointerException("There is no move to undo!");
-            }
-
-            // additional actions, if any TODO
-            switch (toUndo.action) {
-                case UNCASTLE:
-                    makeUncastle(toUndo);
-                    break;
-                case UNPROMOTE:
-                    makeUnpromote(toUndo);
-                    break;
-                case UNPROMOTEandUNCAPTURE:
-                    makeUnpromote(toUndo);
-                    makeUncapture();
-                    break;
-                case UNCAPTURE:
-                    makeUncapture();
-                    break;
-                default:
-                    break;
-            }
-            
-            makeMove(toUndo);
-            game.resetPieceStateUndo(toUndo.new_pos.piece);
-        });
+        undoBtn.setOnAction(e -> makeUndo());
         undoBtn.setDisable(true);
         undoBtn.setMaxWidth(Double.MAX_VALUE);
 
@@ -455,7 +472,6 @@ public class App extends Application {
 
         var saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
-            game.saveLogs();
             var text = "Save logs to " + System.getProperty("user.dir") + "/logs.txt?";
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             var result = alert.showAndWait();
@@ -467,7 +483,13 @@ public class App extends Application {
 
         var quitBtn = new Button("Quit");
         quitBtn.setOnAction(e -> {
-            Platform.exit();
+            var text = "Remember to save before quitting!";
+            var alert = new Alert(Alert.AlertType.WARNING, text);
+            alert.setHeaderText("You are closing the app.");
+            var result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+                Platform.exit();
+            }
         });
         quitBtn.setMaxWidth(Double.MAX_VALUE);
 

@@ -18,12 +18,15 @@ Built with JavaFX and Maven.
 - [ ] Playing Games from Logs
 
 ## Use
-After cloning the repository, ensure that ``JDK``, ``JRE``, and Maven are available (there's no need to explicitly install JavaFX). Then run the following command:
+After cloning the repository, ensure that ``JDK``, ``JRE``, and Maven are available (there's no need to explicitly install JavaFX). Then run the following command to test the app locally:
 
 ``mvn clean javafx:run``
 
+To create a ``.jar`` file, use ``mvn package``.
+
 - To castle, move the King and not the Rook. 
-- Algebraic Notation follows Portable Game Notation (PGN) but is intentionally verbose: the starting position is always specified.
+- The logs follow Portable Game Notation (PGN) but are intentionally verbose: the starting position is always specified. This prevents any ambiguity from the outset.
+
 ## Known issues
-- Linux users: make sure ``xdg-open`` is installed (e.g.``sudo apt install xdg-utils``)
+- Linux users: make sure ``xdg-open`` is installed (e.g.``sudo apt install xdg-utils``).
 

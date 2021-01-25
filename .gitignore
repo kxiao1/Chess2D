@@ -11,6 +11,8 @@ buildNumber.properties
 
 .vscode
 
+# personal notes
 notes.md
 
-logs.txt
+# sample log files
+*.txt
