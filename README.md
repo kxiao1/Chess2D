@@ -11,10 +11,10 @@ Built with JavaFX and Maven.
 - [ ] Promoting
 - [x] Castling 
 - [ ] En Passant
-- [ ] Algebraic Notation and Outputing Logs
+- [x] Algebraic Notation and Outputing Logs
 - [ ] Timer
 - [x] Restarts
-- [ ] Undos
+- [x] Undos
 - [ ] Playing Games from Logs
 
 ## Use

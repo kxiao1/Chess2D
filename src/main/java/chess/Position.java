@@ -8,6 +8,15 @@ public class Position {
     boolean isLastRow;
     boolean isBlack;
 
+    static int getXFromString(String str) {
+        var chr = str.charAt(0);
+        return (int)chr - 97;
+    }
+    static int getYFromString(String str) {
+        var chr = str.charAt(1);
+        return Character.getNumericValue(chr);
+    }
+
     public static boolean samePos(Position pos1, Position pos2) {
         if (pos1 == null || pos2 == null) {
             var errStr = (pos1 == null ? "Pos1" : "Pos2") + " is null.";
@@ -26,8 +35,8 @@ public class Position {
         this.name = String.valueOf((char)(x + 97)) + (y + 1);
         this.piece = piece;
         
-        isLastRow = (y == 0 || y == (Board.NumY-1));
-        isBlack = ((this.x % 2) ^ (this.y % 2)) == 0;
+        isLastRow = Board.isLastRow(x, y);
+        isBlack = Board.isBlack(x, y);
     }
 
     public int getX() {

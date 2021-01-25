@@ -50,6 +50,31 @@ public class App extends Application {
     Game game;
     Scene scene;
 
+    private void makeUncastle(Move move) {
+        var kingMove = game.getUncastleKingMove();
+        var kingPos = kingMove.old_pos;
+        var king = kingPos.piece;
+        var sp = (StackPane) scene.lookup("#" + kingPos.toString() + "_sp");
+        var pc = (Button) sp.lookup("#" + king.toString());
+        sp.getChildren().remove(pc);
+
+        var newPos = kingMove.new_pos;
+        var spNew = (StackPane) scene.lookup("#" + newPos.toString() + "_sp");
+        spNew.getChildren().add(pc);
+    }
+
+    private void makeUnpromote(Move move) {
+        // TODO
+    }
+
+    private void makeUncapture() {
+        var capPiece = game.getCapturedPiece();
+        var pos = capPiece.pos;
+        var pc = makePieceButton(capPiece);
+        var sp = (StackPane) scene.lookup("#" + pos.toString() + "_sp");
+        sp.getChildren().add(pc);
+    }
+
     private void makeMove(Move move) {
 
         // complete current move
@@ -75,9 +100,6 @@ public class App extends Application {
 
         // check for Checks
         var checked = game.isCheck();
-
-        // add move to logs
-        game.addToLogs(move);
 
         // TODO: account for Promotions and En Passant
         switch (move.action) {
@@ -130,16 +152,18 @@ public class App extends Application {
                 // checkmate
                 checkedBox.setText("CHECKMATE");
                 game.indicateCheckmate();
-                text = game.turn.toString() + " has been checkmated.\nSave logs to " + System.getProperty("user.dir") + "/logs.txt?";
+                text = game.turn.toString() + " has been checkmated.\nSave logs to " + System.getProperty("user.dir")
+                        + "/logs.txt?";
             } else {
-                text = game.turn.toString() + " has no more moves.\nStalemate.\nSave logs to " + System.getProperty("user.dir") + "/logs.txt?";
+                text = game.turn.toString() + " has no more moves.\nStalemate.\nSave logs to "
+                        + System.getProperty("user.dir") + "/logs.txt?";
             }
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent()) {
                 if (result.get() == ButtonType.OK) {
                     game.saveLogs();
-                }    
+                }
                 // disable the board
                 var b = (TilePane) scene.lookup("#chessboard");
                 b.setDisable(true);
@@ -173,10 +197,28 @@ public class App extends Application {
                 // if occupied, enable the button
                 var pc = (Button) sp.lookup("#" + pos.piece.toString());
                 pc.setDisable(false);
-                pc.setOnAction(e -> makeMove(move));
+                pc.setOnAction(e -> {
+                    game.addToLogs(move);
+                    makeMove(move);
+                    if (game.turn == Turn.BLACK && game.turnNo == 1) {
+                        var restartBtn = (Button) scene.lookup("#restartBtn");
+                        var undoBtn = (Button) scene.lookup("#undoBtn");
+                        restartBtn.setDisable(false);
+                        undoBtn.setDisable(false);
+                    }
+                });
             } else {
                 // if not occupied, add the pickdest event handler
-                sq.setOnMouseClicked(e -> makeMove(move));
+                sq.setOnMouseClicked(e -> {
+                    game.addToLogs(move);
+                    makeMove(move);
+                    if (game.turn == Turn.BLACK && game.turnNo == 1) {
+                        var restartBtn = (Button) scene.lookup("#restartBtn");
+                        var undoBtn = (Button) scene.lookup("#undoBtn");
+                        restartBtn.setDisable(false);
+                        undoBtn.setDisable(false);
+                    }
+                });
             }
         }
     }
@@ -194,7 +236,7 @@ public class App extends Application {
                 pc.setDisable(true);
                 pc.setOnAction(e -> pcSrc(pos.piece));
             }
-            
+
             // remove the rectangle's handler
             sq.setOnMouseClicked(null);
         }
@@ -366,21 +408,59 @@ public class App extends Application {
         });
         startBtn.setMaxWidth(Double.MAX_VALUE);
 
+        var undoBtn = new Button("Undo (TODO)");
+        undoBtn.setId("undoBtn");
+        undoBtn.setOnAction(e -> {
+            // disable all of current player's buttons
+            unHighlight();
+            deactivatePieces(game.turn);
+            
+            var toUndo = game.undoMove();
+            if (toUndo == null) {
+                throw new NullPointerException("There is no move to undo!");
+            }
+
+            // additional actions, if any TODO
+            switch (toUndo.action) {
+                case UNCASTLE:
+                    makeUncastle(toUndo);
+                    break;
+                case UNPROMOTE:
+                    makeUnpromote(toUndo);
+                    break;
+                case UNPROMOTEandUNCAPTURE:
+                    makeUnpromote(toUndo);
+                    makeUncapture();
+                    break;
+                case UNCAPTURE:
+                    makeUncapture();
+                    break;
+                default:
+                    break;
+            }
+            
+            makeMove(toUndo);
+            game.resetPieceStateUndo(toUndo.new_pos.piece);
+        });
+        undoBtn.setDisable(true);
+        undoBtn.setMaxWidth(Double.MAX_VALUE);
+
         var restartBtn = new Button("Restart");
         restartBtn.setId("restartBtn");
         restartBtn.setOnAction(e -> {
             initUI(stage, true);
         });
+        restartBtn.setDisable(true);
         restartBtn.setMaxWidth(Double.MAX_VALUE);
 
         var saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
             game.saveLogs();
-            var text = "Save logs to " + System.getProperty("user.dir") +"/logs.txt?";
+            var text = "Save logs to " + System.getProperty("user.dir") + "/logs.txt?";
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             var result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
-                game.saveLogs();;
+                game.saveLogs();
             }
         });
         saveBtn.setMaxWidth(Double.MAX_VALUE);
@@ -391,7 +471,7 @@ public class App extends Application {
         });
         quitBtn.setMaxWidth(Double.MAX_VALUE);
 
-        VBox ctrls = new VBox(10, startBtn, restartBtn, saveBtn, quitBtn);
+        VBox ctrls = new VBox(10, startBtn, undoBtn, restartBtn, saveBtn, quitBtn);
         ctrls.setPadding(new Insets(5));
         ctrls.setAlignment(Pos.CENTER_LEFT);
 
@@ -446,6 +526,7 @@ public class App extends Application {
         // title.requestFocus();
         stage.setScene(scene);
         stage.setTitle("Chess2D");
+        stage.setResizable(false);
         stage.show();
 
         if (shouldStartGame) {

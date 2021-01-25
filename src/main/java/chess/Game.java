@@ -9,18 +9,22 @@ import chess.pieces.*;
 enum Turn {
     BLACK, WHITE
 };
+
 class Game {
     Turn turn;
     int turnNo;
-    ArrayList<String> logs;
+    private ArrayList<String> logs;
     ArrayList<Piece> whitePieces;
     ArrayList<Piece> blackPieces;
-    ArrayList<Piece> ownPieces;
-    ArrayList<Piece> oppPieces;
-    ArrayList<Piece> capturedBlack;
-    ArrayList<Piece> CapturedWhite;
-    boolean checked;
-    Board chessBoard;
+    private ArrayList<Piece> ownPieces;
+    private ArrayList<Piece> oppPieces;
+    private ArrayList<Piece> capturedBlack;
+    private ArrayList<Piece> capturedWhite;
+    private Move uncastleKingMove;
+    private Piece capturedPieceToRestore;
+    private boolean checked;
+    private boolean isCheckmated;
+    private Board chessBoard;
 
     Game() {
         turn = Turn.WHITE;
@@ -31,8 +35,11 @@ class Game {
         ownPieces = whitePieces;
         oppPieces = blackPieces;
         capturedBlack = new ArrayList<Piece>();
-        CapturedWhite = new ArrayList<Piece>();
+        capturedWhite = new ArrayList<Piece>();
+        uncastleKingMove = null;
+        capturedPieceToRestore = null;
         checked = false;
+        isCheckmated = true;
 
         var squares = new Position[Board.NumX][];
         chessBoard = new Board(squares, whitePieces, blackPieces, turn);
@@ -122,7 +129,7 @@ class Game {
             mName = mName.concat("+");
         }
         if (turn == Turn.WHITE) {
-            var newEntry = turnNo + ". " + mName + " "; 
+            var newEntry = turnNo + ". " + mName + " ";
             logs.add(newEntry);
         } else {
             var currEntry = logs.remove(logs.size() - 1);
@@ -133,27 +140,166 @@ class Game {
 
     void indicateCheckmate() {
         var lastEntry = logs.remove(logs.size() - 1);
-        lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# " 
-                    + (turn == Turn.BLACK ? "1-0" : "0-1");
+        lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# " + (turn == Turn.BLACK ? "1-0" : "0-1");
         logs.add(lastEntry);
+        isCheckmated = true;
     }
 
     void saveLogs() {
         try (var log = new BufferedWriter(new FileWriter("logs.txt"))) {
             for (var line : logs) {
-                log.write(line); 
+                log.write(line);
             }
         } catch (IOException e) {
             System.out.println(e);
         }
     }
 
+    void resetPieceStateUndo(Piece p) {
+        if (p.turnFirstMoved == -1) {
+            p.turnFirstMoved = 0; // back to normal unmoved
+            p.hasMoved = false;
+        }
+    }
+
+    Piece getCapturedPiece() {
+        return capturedPieceToRestore;
+    }
+
+    Move getUncastleKingMove() {
+        return uncastleKingMove;
+    }
+
+    Move undoMove() {
+        if (logs.size() == 0) {
+            // cannot undo from first move
+            return null;
+        }
+
+        // switch the player here too, becaujse it gets 'switched back' in
+        // App.makeMove()
+        switchTurn();
+
+        // account for the extra turn increment when switchTurn is called twice,
+        // once here and once in App.makeMove()
+        turnNo--;
+
+        // use string parsing
+        var mText = logs.remove(logs.size() - 1);
+        if (isCheckmated) {
+            isCheckmated = false;
+            mText = mText.substring(0, mText.length() - 4);
+        }
+
+        // a checkmate is also a check
+        if (checked) {
+            mText = mText.substring(0, mText.length() - 1);
+        }
+
+        // last move was castling: unmove King manually here and return rook move
+        // the app will process the rook move and render the reverted King move
+        int isCastle = mText.equals("O-O-O") ? 2 : (mText.equals("O-O") ? 1 : 0);
+        if (isCastle > 0) {
+            Position KingPosEnd = null;
+            for (var own : ownPieces) {
+                if (own.type == Pieces.KING) {
+                    KingPosEnd = own.pos;
+                }
+            }
+
+            // unmove the King
+            var king = KingPosEnd.piece;
+            king.hasMoved = false;
+            king.turnFirstMoved = 0;
+            KingPosEnd.piece = null;
+
+            Position KingPosStart = chessBoard.getSquares()[4][KingPosEnd.getY()];
+            KingPosStart.piece = king;
+
+            king.pos = KingPosStart;
+
+            // prepare for App to request this move
+            uncastleKingMove = new Move(king.toString(), KingPosEnd, KingPosStart, Action.NONE);
+
+            // return rook Move
+            Position rookPosEnd = null;
+            Move rookMove = null;
+            if (isCastle == 1) { // O-O
+                rookPosEnd = chessBoard.getSquares()[5][KingPosEnd.getY()];
+                rookMove = chessBoard.createMove(rookPosEnd.piece.toString(), rookPosEnd, 2, 0, Action.UNCASTLE);
+                rookPosEnd.piece.turnFirstMoved = -1;
+                return rookMove;
+            } else { // O-O-O
+                rookPosEnd = chessBoard.getSquares()[3][KingPosEnd.getY()];
+                rookMove = chessBoard.createMove(rookPosEnd.piece.toString(), rookPosEnd, -3, 0, Action.UNCASTLE);
+                rookPosEnd.piece.turnFirstMoved = -1;
+                return rookMove;
+            }
+        }
+
+        var isPromote = false;
+        if (mText.substring(mText.length() - 2).equals("=P")) {
+            mText = mText.substring(0, mText.length() - 2);
+            isPromote = true;
+        }
+
+        var endPosStr = mText.substring(mText.length() - 2);
+        var endPos = chessBoard.getSquares()[Position.getXFromString(endPosStr)][Position.getYFromString(endPosStr)];
+        mText = mText.substring(0, mText.length() - 2);
+
+        var isCapture = false;
+        if (mText.charAt(mText.length() - 1) == 'x') {
+            mText = mText.substring(0, mText.length() - 1);
+            isCapture = true;
+        }
+
+        var startPosStr = mText.substring(mText.length() - 2);
+        var startPos = chessBoard.getSquares()[Position.getXFromString(startPosStr)][Position
+                .getYFromString(startPosStr)];
+
+        var piece = endPos.piece;
+
+        // set correct hasMoved
+        if (piece.turnFirstMoved == turnNo) {
+            piece.turnFirstMoved = -1;
+        }
+
+        // un-capture if needed, includes un-En Passant case
+        if (isCapture) {
+            var capPieces = turn == Turn.WHITE ? capturedWhite : capturedBlack;
+            Piece capPiece = capPieces.remove(capPieces.size() - 1);
+            capturedPieceToRestore = capPiece;
+            capPiece.pos.piece = capPiece;
+        }
+
+        // un-promote if needed TODO
+        if (isPromote) {
+            // restore the pawn, adjust its state etc.
+            if (isCapture) {
+                // return (... UNPROMOTEandUNCAPTURE)
+            } else {
+                // return (... UNPROMOTE)
+            }
+        }
+
+        // note that the captured piece could have already been restored
+        if (endPos.piece == piece) {
+            endPos.piece = null;
+        }
+        startPos.piece = piece;
+        piece.pos = startPos;
+
+        // return a new move
+        return new Move(piece.toString(), endPos, startPos, Action.NONE);
+    }
+
     // Updates state and returns captured piece if any
     Piece makeMoveAndCapture(Move m) {
         var startPos = m.old_pos;
         var p = startPos.piece;
-        if (!p.hasMoved) {
+        if (p.turnFirstMoved == 0 && !p.hasMoved) {
             p.hasMoved = true;
+            p.turnFirstMoved = turnNo;
         }
         var endPos = m.new_pos;
         startPos.piece = null;
@@ -164,7 +310,7 @@ class Game {
             if (oppPiece.isBlack) {
                 capturedBlack.add(oppPiece);
             } else {
-                CapturedWhite.add(oppPiece);
+                capturedWhite.add(oppPiece);
             }
         }
         endPos.piece = p;
@@ -178,8 +324,8 @@ class Game {
     Move makeCastle(Position KingPos) {
         Move rookMove = null;
         Position rookPosStart = null;
-        switch(KingPos.getX()) {
-            case 2: 
+        switch (KingPos.getX()) {
+            case 2:
                 rookPosStart = chessBoard.getSquares()[0][KingPos.getY()];
                 rookMove = chessBoard.createMove(rookPosStart.piece.toString(), rookPosStart, 3, 0, Action.NONE);
                 break;
@@ -209,7 +355,7 @@ class Game {
 
     // En Passant TODO
     Piece makeEnPassant(Move m) {
-        
+
         // return captured piece
         return null;
     }

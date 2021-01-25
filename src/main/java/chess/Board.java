@@ -18,6 +18,14 @@ public class Board {
         return isValidPos(pos.getX(), pos.getY());
     }
 
+    static boolean isLastRow(int x, int y) {
+        return (y == 0 || y == (NumY-1));
+    }
+
+    static boolean isBlack(int x, int y) {
+        return ((x % 2) ^ (y % 2)) == 0;
+    }
+
     // check if piece is on black side of the board
     static boolean onBlackSide(Position pos) {
         return pos.getY() >= 4;
