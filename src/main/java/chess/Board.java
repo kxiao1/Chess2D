@@ -19,7 +19,7 @@ public class Board {
     }
 
     static boolean isLastRow(int x, int y) {
-        return (y == 0 || y == (NumY-1));
+        return (y == 0 || y == (NumY - 1));
     }
 
     static boolean isBlack(int x, int y) {
@@ -284,5 +284,17 @@ public class Board {
     public Move createMove(String p, Position start, int x, int y, Action a) {
         var end = squares[start.getX() + x][start.getY() + y];
         return new Move(p, start, end, a);
+    }
+
+    public String toString() {
+        String str = "Current board positions are:\n";
+        for (int x = 0; x < NumX; ++x) {
+            for (int y = 0; y < NumY; ++y) {
+                str = str + "\t" + squares[x][y].toString() + ": " + 
+                (squares[x][y].piece != null ? squares[x][y].piece.toString() : "null") 
+                + "\n";
+            }
+        }
+        return str;
     }
 }
