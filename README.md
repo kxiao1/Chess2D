@@ -1,5 +1,5 @@
 # 2D Chess App
-Built with JavaFX and Maven.
+Built with JavaFX and Maven over Winter Break 2020-21.
 
 ## Progress
 - [x] Board Layout
@@ -12,17 +12,20 @@ Built with JavaFX and Maven.
 - [x] Castling 
 - [ ] En Passant
 - [x] Algebraic Notation and Outputing Logs
-- [ ] Timer
 - [x] Restarts
 - [x] Undos
-- [ ] Playing Games from Logs
+
+## Possible Extensions
+- Playing with other humans over sockets (``java.net``). In this remote multiplayer mode (which requires a new UI), the player wishing to be White creates a client ``Socket`` and Black starts a ``ServerSocket``. Each process will have two threads, one playing moves locally and the other relaying opponent moves.
+- Replaying games from logs. Need to implement move-parsing and create a new UI; some fast-forwarding functionality would be desirable here.
+- Installing a customizable timer. The countdown display can be controlled with a property binding (e.g. ``Label.textProperty().bind(TIMELEFT)``, thanks to ``javafx.beans.property.IntegerProperty``). The numerical value can be updated with a ``Timeline`` and ``KeyFrame`` from ``javafx.animation``.
 
 ## Usage
 After cloning the repository, ensure that ``JDK``, ``JRE``, and Maven are available (there's no need to explicitly install JavaFX). Then run the following command to test the app locally:
 
 ``mvn clean javafx:run``
 
-To build a runtime image, run the above command and then ``mvn javafx:jlink``. Run the executable image with ``target/image/bin/java -m kxiao1/chess.App`` (the image folder is portable).
+To build a runtime image, run the above command and then ``mvn javafx:jlink``. Run the executable image with ``target/image/bin/java -m kxiao1/chess.App`` (the ``image`` folder is portable).
 
 It is possible to build a ``.jar`` package with ``mvn package``. However, running it using the command ``java`` requires the [JavaFX runtime](https://gluonhq.com/products/javafx/) to be downloaded and made known to the JRE. This is because JDK 11+ removed built-in support for JavaFX. See https://openjfx.io/openjfx-docs/#install-javafx for possible solutions (this has not been tested).
 
