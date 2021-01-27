@@ -436,21 +436,34 @@ public class App extends Application {
         // bottom
         var javaVersion = System.getProperty("java.version");
         var javafxVersion = System.getProperty("javafx.version");
-        var info = new Label("App developed with JavaFX " + javafxVersion + " and Java " + javaVersion + ".");
+        var info = new Label("App is running on JavaFX " + javafxVersion + " and Java " + javaVersion + ".");
         info.setFont(defaultFont);
-        info.setPadding(new Insets(0, 0, 0, 5));
-        var link = new Hyperlink("View the source code.");
-        link.setFont(defaultFont);
-        link.setOnAction(e -> {
+
+        var link1 = new Hyperlink("Icons licensed by icons8");
+        link1.setFont(defaultFont);
+        link1.setPadding(new Insets(0));
+        link1.setStyle(" -fx-text-fill:steelblue; -fx-underline: false");
+        link1.setOnAction(e -> {
+            getHostServices().showDocument("https://icons8.com");
+        });
+        var divider = new Label("|");
+        var link2 = new Hyperlink("View the source code");
+        link2.setFont(defaultFont);
+        divider.setFont(defaultFont);
+        link2.setPadding(new Insets(0));
+        link2.setStyle(" -fx-text-fill:steelblue; -fx-underline: false");
+        link2.setOnAction(e -> {
             getHostServices().showDocument("https://github.com/kxiao1/Chess2D");
         });
-        link.setPadding(new Insets(0, 5, 0, 0));
-        HBox footer = new HBox(5, info, link);
-        footer.setPadding(new Insets(20, 0, 0, 0));
+        var links = new HBox(3, link1, divider, link2);
+        links.setAlignment(Pos.TOP_CENTER);
+
+        var footer = new VBox(0, info, links);
+        footer.setPadding(new Insets(20, 0, 10, 0));
         footer.setAlignment(Pos.CENTER);
 
         // top: toolbar
-        var title = new Label("Press 'Start' for a New Game.");
+        var title = new Label("“There is no remorse like the remorse of chess.”");
         title.setFont(titleFont);
         title.setId("titleText");
 
@@ -462,7 +475,7 @@ public class App extends Application {
         ; // by default this text should be invisible
 
         var Toolbar = new VBox(10, title, checkedBox);
-        Toolbar.setPadding(new Insets(50, 5, 0, 5));
+        Toolbar.setPadding(new Insets(30, 5, 0, 5));
         Toolbar.setAlignment(Pos.BOTTOM_CENTER);
 
         // left: gameplay buttons
@@ -475,13 +488,13 @@ public class App extends Application {
             activatePieces(game.turn);
             title.requestFocus();
         });
-        startBtn.setMaxWidth(small * numCanCapture - tiny);
+        startBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
 
         var undoBtn = new Button("Undo");
         undoBtn.setId("undoBtn");
         undoBtn.setOnAction(e -> makeUndo());
         undoBtn.setDisable(true);
-        undoBtn.setMaxWidth(small * numCanCapture - tiny); 
+        undoBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
 
         var restartBtn = new Button("Restart");
         restartBtn.setId("restartBtn");
@@ -489,18 +502,20 @@ public class App extends Application {
             initUI(stage, true);
         });
         restartBtn.setDisable(true);
-        restartBtn.setMaxWidth(small * numCanCapture - tiny);
+        restartBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
 
         var saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
-            var text = "Save logs to " + System.getProperty("user.dir") + "/logs.txt?";
+            var text = "Save logs to " + System.getProperty("user.dir") + "/logs.txt?\n"
+                    + "This will overwrite any existing file.";
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
+            alert.setHeaderText("Saving logs");
             var result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
                 game.saveLogs();
             }
         });
-        saveBtn.setMaxWidth(small * numCanCapture - tiny);
+        saveBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
 
         var quitBtn = new Button("Quit");
         quitBtn.setOnAction(e -> {
@@ -512,11 +527,11 @@ public class App extends Application {
                 Platform.exit();
             }
         });
-        quitBtn.setMaxWidth(small * numCanCapture - tiny);
+        quitBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
 
         VBox ctrls = new VBox(10, startBtn, undoBtn, restartBtn, saveBtn, quitBtn);
         ctrls.setPadding(new Insets(10));
-        ctrls.setMinWidth(small * numCanCapture + 10); // 10 is rule of thumb
+        ctrls.setMinWidth(small * numCanCapture + 18); // best effort at aligning
         ctrls.setAlignment(Pos.CENTER);
 
         // right: captured pieces
@@ -537,7 +552,7 @@ public class App extends Application {
         tile.setMaxWidth((Board.NumX + 2) * squareSize);
         tile.setMaxHeight((Board.NumY + 2) * squareSize);
         tile.setStyle("-fx-border-color: black");
-        
+
         var squares = game.getSquares();
         for (int y = Board.NumY - 1; y >= 0; --y) {
             for (int x = 0; x < Board.NumX; ++x) {
@@ -557,7 +572,7 @@ public class App extends Application {
         dummy.setMinSize(tiny, tiny);
         centerGrid.add(dummy, 0, 0, 1, 1);
         for (int i = 1; i < Board.NumY + 1; ++i) {
-            var text = new Label(String.valueOf(i));
+            var text = new Label(String.valueOf(Board.NumY + 1 - i));
             text.setFont(titleFont);
             var lab = new StackPane(text);
             lab.setMinSize(tiny, squareSize);

@@ -14,5 +14,5 @@ buildNumber.properties
 # personal notes
 notes.md
 
-# sample log files
-*.txt
+# default log file
+logs.txt
