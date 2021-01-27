@@ -40,7 +40,10 @@ public class App extends Application {
 
     final int squareSize = 50;
     final int small = 30;
+    final int tiny = 25;
+    final int numCanCapture = 5;
     final Font defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
+    final Font checkFont = Font.font("Serif", FontWeight.NORMAL, 16);
     final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
     final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
     final String hoverStyle = "-fx-border-color: red; -fx-background-color: transparent";
@@ -392,7 +395,7 @@ public class App extends Application {
 
     private StackPane makeSquare(Position pos) {
         var isBlack = pos.isBlack;
-        var col = isBlack ? Color.rgb(0, 0, 0) : Color.rgb(255, 255, 255);
+        var col = isBlack ? Color.BLACK : Color.WHITE;
         var sq = new Rectangle(squareSize, squareSize, col);
         StackPane.setMargin(sq, Insets.EMPTY);
         sq.setId(pos.toString());
@@ -435,12 +438,15 @@ public class App extends Application {
         var javafxVersion = System.getProperty("javafx.version");
         var info = new Label("App developed with JavaFX " + javafxVersion + " and Java " + javaVersion + ".");
         info.setFont(defaultFont);
+        info.setPadding(new Insets(0, 0, 0, 5));
         var link = new Hyperlink("View the source code.");
         link.setFont(defaultFont);
         link.setOnAction(e -> {
             getHostServices().showDocument("https://github.com/kxiao1/Chess2D");
         });
+        link.setPadding(new Insets(0, 5, 0, 0));
         HBox footer = new HBox(5, info, link);
+        footer.setPadding(new Insets(20, 0, 0, 0));
         footer.setAlignment(Pos.CENTER);
 
         // top: toolbar
@@ -449,14 +455,14 @@ public class App extends Application {
         title.setId("titleText");
 
         var checkedBox = new Label("CHECKED");
-        checkedBox.setFont(titleFont);
+        checkedBox.setFont(checkFont);
         checkedBox.setTextFill(Color.RED);
         checkedBox.setId("checkedBox");
         checkedBox.setVisible(false);
         ; // by default this text should be invisible
 
         var Toolbar = new VBox(10, title, checkedBox);
-        Toolbar.setPadding(new Insets(20, 5, 5, 5));
+        Toolbar.setPadding(new Insets(50, 5, 0, 5));
         Toolbar.setAlignment(Pos.BOTTOM_CENTER);
 
         // left: gameplay buttons
@@ -469,13 +475,13 @@ public class App extends Application {
             activatePieces(game.turn);
             title.requestFocus();
         });
-        startBtn.setMaxWidth(Double.MAX_VALUE);
+        startBtn.setMaxWidth(small * numCanCapture - tiny);
 
         var undoBtn = new Button("Undo");
         undoBtn.setId("undoBtn");
         undoBtn.setOnAction(e -> makeUndo());
         undoBtn.setDisable(true);
-        undoBtn.setMaxWidth(Double.MAX_VALUE);
+        undoBtn.setMaxWidth(small * numCanCapture - tiny); 
 
         var restartBtn = new Button("Restart");
         restartBtn.setId("restartBtn");
@@ -483,7 +489,7 @@ public class App extends Application {
             initUI(stage, true);
         });
         restartBtn.setDisable(true);
-        restartBtn.setMaxWidth(Double.MAX_VALUE);
+        restartBtn.setMaxWidth(small * numCanCapture - tiny);
 
         var saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
@@ -494,7 +500,7 @@ public class App extends Application {
                 game.saveLogs();
             }
         });
-        saveBtn.setMaxWidth(Double.MAX_VALUE);
+        saveBtn.setMaxWidth(small * numCanCapture - tiny);
 
         var quitBtn = new Button("Quit");
         quitBtn.setOnAction(e -> {
@@ -506,19 +512,21 @@ public class App extends Application {
                 Platform.exit();
             }
         });
-        quitBtn.setMaxWidth(Double.MAX_VALUE);
+        quitBtn.setMaxWidth(small * numCanCapture - tiny);
 
         VBox ctrls = new VBox(10, startBtn, undoBtn, restartBtn, saveBtn, quitBtn);
-        ctrls.setPadding(new Insets(5));
-        ctrls.setAlignment(Pos.CENTER_LEFT);
+        ctrls.setPadding(new Insets(10));
+        ctrls.setMinWidth(small * numCanCapture + 10); // 10 is rule of thumb
+        ctrls.setAlignment(Pos.CENTER);
 
         // right: captured pieces
-        var rightLabel = new Label("Captured Pieces");
+        var rightLabel = new Label("Captured:");
         rightLabel.setFont(titleFont);
-        rightLabel.setPadding(new Insets(5));
         var blackCaptured = makeCaptured(true);
         var whiteCaptured = makeCaptured(false);
         var Captured = new VBox(20, rightLabel, blackCaptured, whiteCaptured);
+        Captured.setPadding(new Insets(10));
+        Captured.setMinWidth(small * numCanCapture);
         Captured.setAlignment(Pos.CENTER);
 
         // center: chessboard
@@ -526,30 +534,48 @@ public class App extends Application {
         tile.setPrefColumns(Board.NumX);
         tile.setId("chessboard");
         var tChild = tile.getChildren();
-        tile.setMaxWidth((Board.NumX + 1) * squareSize);
-        tile.setMaxHeight((Board.NumY + 1) * squareSize);
+        tile.setMaxWidth((Board.NumX + 2) * squareSize);
+        tile.setMaxHeight((Board.NumY + 2) * squareSize);
+        tile.setStyle("-fx-border-color: black");
+        
         var squares = game.getSquares();
         for (int y = Board.NumY - 1; y >= 0; --y) {
-            var lab = new Rectangle(squareSize, squareSize, Color.TRANSPARENT);
-            var text = new Label(String.valueOf(y + 1));
-            text.setFont(titleFont);
-            var labSp = new StackPane(lab, text);
-            tChild.add(labSp); // 1 - 8 on the left
             for (int x = 0; x < Board.NumX; ++x) {
                 Position pos = squares[x][y];
                 var sp = makeSquare(pos);
                 tChild.add(sp);
             }
         }
-        var dummy = new Rectangle(squareSize, squareSize, Color.TRANSPARENT);
-        tChild.add(dummy);
-        for (int i = 0; i < Board.NumX; ++i) {
-            var lab = new Rectangle(squareSize, squareSize, Color.TRANSPARENT);
-            var text = new Label(String.valueOf((char) (i + 97)));
+
+        var centerGrid = new GridPane();
+        centerGrid.setStyle("-fx-background-color: white");
+        centerGrid.setMaxSize(Board.NumX * squareSize + 2 * tiny + 2, Board.NumY * squareSize + 2 * tiny + 2);
+        centerGrid.setAlignment(Pos.CENTER);
+
+        // it suffices to set only the top left and bottom right dummies
+        var dummy = new StackPane();
+        dummy.setMinSize(tiny, tiny);
+        centerGrid.add(dummy, 0, 0, 1, 1);
+        for (int i = 1; i < Board.NumY + 1; ++i) {
+            var text = new Label(String.valueOf(i));
             text.setFont(titleFont);
-            var labSp = new StackPane(lab, text);
-            tChild.add(labSp); // A- H at the bottom
+            var lab = new StackPane(text);
+            lab.setMinSize(tiny, squareSize);
+            centerGrid.add(lab, 0, i, 1, 1);
         }
+
+        centerGrid.add(tile, 1, 1, Board.NumX, Board.NumY);
+
+        for (int i = 1; i < Board.NumY + 1; ++i) {
+            var text = new Label(String.valueOf((char) (i + 96)));
+            text.setFont(titleFont);
+            var lab = new StackPane(text);
+            lab.setMinSize(squareSize, tiny);
+            centerGrid.add(lab, i, Board.NumY + 1, 1, 1);
+        }
+        dummy = new StackPane();
+        dummy.setMinSize(tiny, tiny);
+        centerGrid.add(dummy, Board.NumX + 1, Board.NumY + 1, 1, 1);
 
         // set BorderPane counterclockwise
         BorderPane border = new BorderPane();
@@ -557,7 +583,7 @@ public class App extends Application {
         border.setLeft(ctrls);
         border.setBottom(footer);
         border.setRight(Captured);
-        border.setCenter(tile);
+        border.setCenter(centerGrid);
 
         scene = new Scene(border, 800, 600);
         stage.setScene(scene);
