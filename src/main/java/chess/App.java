@@ -156,7 +156,7 @@ public class App extends Application {
         if (!hasMoves) {
             String text;
             String header;
-            if (checked) {
+            if (game.isCheckmated()) {
                 // checkmate
                 checkedBox.setText("CHECKMATE");
                 game.indicateCheckmate();
@@ -164,7 +164,8 @@ public class App extends Application {
                         + "/logs.txt?";
                 header = "Checkmate!";
             } else {
-                text = game.turn.toString() + " has no more moves.\nStalemate.\nSave logs to "
+                game.indicateStalemate();
+                text = game.turn.toString() + " has no more moves. Stalemate.\nSave logs to "
                         + System.getProperty("user.dir") + "/logs.txt?";
                 header = "Stalemate!";
             }

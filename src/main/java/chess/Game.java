@@ -24,6 +24,7 @@ class Game {
     private Piece capturedPieceToRestore;
     private boolean isChecked;
     private boolean isCheckmated;
+    private boolean isStalemate;
     private boolean isBeingUndone;
     private boolean isNoOp;
     private Board chessBoard;
@@ -42,6 +43,7 @@ class Game {
         capturedPieceToRestore = null;
         isChecked = false;
         isCheckmated = false;
+        isStalemate = false;
         isBeingUndone = false;
         isNoOp = false;
 
@@ -118,7 +120,16 @@ class Game {
         }
 
         // prevent false checkmates during an undo sequence
-        return (isBeingUndone || moveCount > 0);
+        if (moveCount == 0 && !isBeingUndone) {
+            if (isChecked) {
+                isCheckmated = true;
+            } else {
+                isStalemate = true;
+            }
+            return false;
+        }
+        
+        return true;
     }
 
     Position[][] getSquares() {
@@ -161,7 +172,12 @@ class Game {
         var lastEntry = logs.remove(logs.size() - 1);
         lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# " + (turn == Turn.BLACK ? "1-0" : "0-1");
         logs.add(lastEntry);
-        isCheckmated = true;
+    }
+    
+    void indicateStalemate() {
+        var lastEntry = logs.remove(logs.size() - 1);
+        lastEntry = lastEntry + "1/2-1/2";  
+        logs.add(lastEntry);
     }
 
     void saveLogs() {
@@ -245,6 +261,11 @@ class Game {
         if (isCheckmated) {
             isCheckmated = false;
             mText = mText.substring(0, mText.length() - 3);
+        }
+
+        if (isStalemate) {
+            isStalemate = true;
+            mText = mText.substring(0, mText.length() - 5);
         }
 
         // strip off trailing space
