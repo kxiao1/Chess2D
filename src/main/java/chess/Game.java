@@ -25,6 +25,7 @@ class Game {
     private boolean isChecked;
     private boolean isCheckmated;
     private boolean isBeingUndone;
+    private boolean isNoOp;
     private Board chessBoard;
 
     Game() {
@@ -42,6 +43,7 @@ class Game {
         isChecked = false;
         isCheckmated = false;
         isBeingUndone = false;
+        isNoOp = false;
 
         var squares = new Position[Board.NumX][];
         chessBoard = new Board(squares, whitePieces, blackPieces, turn);
@@ -132,7 +134,7 @@ class Game {
             return false;
         } 
         isChecked = chessBoard.isCheck();
-        if (isChecked) {
+        if (isChecked && !isNoOp) {
             var lastLogs = logs.remove(logs.size() - 1);
             logs.add(lastLogs.substring(0, lastLogs.length() - 1) + "+ ");
         }
@@ -175,6 +177,9 @@ class Game {
     // Account for the extra turn increment after NOP move
     void switchTurnNoOp() {
         turnNo--;
+
+        // end no-op sequence
+        isNoOp = false;
     }
 
     void resetPieceStateUndo(Piece p) {
@@ -192,6 +197,9 @@ class Game {
         
         // complete the undoing sequence
         isBeingUndone = false;
+
+        // start the no-op sequence
+        isNoOp = true;
     }
 
     Piece getCapturedPiece() {

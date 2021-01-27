@@ -196,6 +196,9 @@ public class App extends Application {
 
         // if undoing from checkmate, need to reactivate the board
         if (game.isCheckmated()) {
+            var l = (Label) scene.lookup("#checkedBox");
+            l.setText("CHECKED");
+
             var b = (TilePane) scene.lookup("#chessboard");
             b.setDisable(false);
             b.requestFocus();
