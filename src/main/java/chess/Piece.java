@@ -4,8 +4,7 @@ import java.util.ArrayList;
 
 public abstract class Piece {
     protected Position pos;
-    protected boolean hasMoved;
-    protected int turnFirstMoved; // initially 0, -1 during an unMove
+    protected int turnFirstMoved; // initially -1
     protected Pieces type;
     protected boolean isBlack;
     protected ArrayList<Move> availableMoves;
@@ -23,8 +22,7 @@ public abstract class Piece {
         }
         this.pos = pos;
         this.type = type;
-        hasMoved = false;
-        turnFirstMoved = 0;
+        turnFirstMoved = -1;
         isBlack = Board.onBlackSide(pos);
     }
 

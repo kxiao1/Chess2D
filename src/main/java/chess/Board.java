@@ -198,10 +198,10 @@ public class Board {
     // REQUIRES: not under check
     public ArrayList<Move> makeCastlingMove(Position start) {
         var moves = new ArrayList<Move>();
-        if (start.piece.type == Pieces.KING && !(start.piece.hasMoved)) {
+        if (start.piece.type == Pieces.KING && start.piece.turnFirstMoved == -1) {
             Piece king = start.piece;
             for (var own : ownPieces) {
-                if (own.type == Pieces.ROOK && !own.hasMoved) {
+                if (own.type == Pieces.ROOK && own.turnFirstMoved == -1) {
                     // both King and Rook must not have moved
                     var rook = own;
                     var path = rook.getAttackPath(king.pos); // hacky

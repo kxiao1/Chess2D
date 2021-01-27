@@ -40,7 +40,7 @@ public class Pawn extends Piece {
         }
 
         // can move two squares?
-        if (!hasMoved) {
+        if (turnFirstMoved == -1) {
             ok = !(chessBoard.violatesBasicRules(pos, 0, 2 * ydisp)
                     || chessBoard.willHitOpponentPiece(pos, 0, 2 * ydisp));
             if (ok) {

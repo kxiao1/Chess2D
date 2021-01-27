@@ -191,6 +191,13 @@ public class App extends Application {
         unHighlight();
         deactivatePieces(game.turn);
 
+        // if undoing from checkmate, need to reactivate the board
+        if (game.isCheckmated()) {
+            var b = (TilePane) scene.lookup("#chessboard");
+            b.setDisable(false);
+            b.requestFocus();
+        }
+
         // the reversed undoing move
         var toUndo = game.undoMove();
         if (toUndo == null) {
@@ -223,6 +230,14 @@ public class App extends Application {
         // again next, make a no-op move for the other player
         makeMove(game.getNoOpKingMove());
         game.switchTurnNoOp();
+
+        // cannot undo further, and there's no point in restarting
+        if (game.turn == Turn.WHITE && game.turnNo == 1) {
+            var restartBtn = (Button) scene.lookup("#restartBtn");
+            var undoBtn = (Button) scene.lookup("#undoBtn");
+            restartBtn.setDisable(true);
+            undoBtn.setDisable(true);
+        }
     }
 
     // pick a piece as the source move
@@ -245,8 +260,8 @@ public class App extends Application {
                 var pc = (Button) sp.lookup("#" + pos.piece.toString());
                 pc.setDisable(false);
                 pc.setOnAction(e -> {
-                    makeMove(move);
                     game.addToLogs(move);
+                    makeMove(move);
                     if (game.turn == Turn.BLACK && game.turnNo == 1) {
                         var restartBtn = (Button) scene.lookup("#restartBtn");
                         var undoBtn = (Button) scene.lookup("#undoBtn");
@@ -257,8 +272,8 @@ public class App extends Application {
             } else {
                 // if not occupied, add the pickdest event handler
                 sq.setOnMouseClicked(e -> {
-                    makeMove(move);
                     game.addToLogs(move);
+                    makeMove(move);
                     if (game.turn == Turn.BLACK && game.turnNo == 1) {
                         var restartBtn = (Button) scene.lookup("#restartBtn");
                         var undoBtn = (Button) scene.lookup("#undoBtn");
@@ -545,7 +560,6 @@ public class App extends Application {
         border.setCenter(tile);
 
         scene = new Scene(border, 800, 600);
-        // title.requestFocus();
         stage.setScene(scene);
         stage.setTitle("Chess2D");
         stage.setResizable(false);

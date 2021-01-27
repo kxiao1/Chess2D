@@ -22,8 +22,9 @@ class Game {
     private ArrayList<Piece> capturedWhite;
     private Move uncastleKingMove;
     private Piece capturedPieceToRestore;
-    private boolean checked;
+    private boolean isChecked;
     private boolean isCheckmated;
+    private boolean isBeingUndone;
     private Board chessBoard;
 
     Game() {
@@ -38,8 +39,9 @@ class Game {
         capturedWhite = new ArrayList<Piece>();
         uncastleKingMove = null;
         capturedPieceToRestore = null;
-        checked = false;
+        isChecked = false;
         isCheckmated = false;
+        isBeingUndone = false;
 
         var squares = new Position[Board.NumX][];
         chessBoard = new Board(squares, whitePieces, blackPieces, turn);
@@ -98,11 +100,13 @@ class Game {
         chessBoard.switchTurns();
     }
 
+    // Return true if the current player has moves to make
     boolean getAllMoves() {
+
         int moveCount = 0;
         for (var p : ownPieces) {
             p.setAvailableMoves();
-            if (p.type == Pieces.KING && !checked) {
+            if (p.type == Pieces.KING && !isChecked) {
                 var m = chessBoard.makeCastlingMove(p.pos);
                 if (m != null) {
                     p.getAvailableMoves().addAll(m);
@@ -110,7 +114,9 @@ class Game {
             }
             moveCount += p.getAvailableMoves().size();
         }
-        return (moveCount > 0);
+
+        // prevent false checkmates during an undo sequence
+        return (isBeingUndone || moveCount > 0);
     }
 
     Position[][] getSquares() {
@@ -122,17 +128,24 @@ class Game {
     }
 
     boolean isCheck() {
-        var isCheck = chessBoard.isCheck();
-        checked = isCheck;
-        return isCheck;
+        if (isBeingUndone) {
+            return false;
+        } 
+        isChecked = chessBoard.isCheck();
+        if (isChecked) {
+            var lastLogs = logs.remove(logs.size() - 1);
+            logs.add(lastLogs.substring(0, lastLogs.length() - 1) + "+ ");
+        }
+        return isChecked;
+    }
+
+    boolean isCheckmated() {
+        return isCheckmated;
     }
 
     void addToLogs(Move m) {
         var mName = m.toString();
-        if (checked) {
-            mName = mName.concat("+");
-        }
-        if (turn == Turn.BLACK) {
+        if (turn == Turn.WHITE) {
             var newEntry = turnNo + ". " + mName + " ";
             logs.add(newEntry);
         } else {
@@ -165,7 +178,6 @@ class Game {
     }
 
     void resetPieceStateUndo(Piece p) {
-
         // put the captured piece (if any) back to the board
         if (capturedPieceToRestore != null) {
             var pos = capturedPieceToRestore.pos;
@@ -177,12 +189,9 @@ class Game {
             }
             capturedPieceToRestore = null;
         }
-
-        // mark piece as not moved
-        if (p.turnFirstMoved == -1) {
-            p.turnFirstMoved = 0; // back to normal unmoved
-            p.hasMoved = false;
-        }
+        
+        // complete the undoing sequence
+        isBeingUndone = false;
     }
 
     Piece getCapturedPiece() {
@@ -212,6 +221,9 @@ class Game {
             return null;
         }
 
+        // start the undoing sequence
+        isBeingUndone = true;
+
         // switch the player here too, because we started this undo in the
         // other player's turn
         switchTurn();
@@ -230,8 +242,8 @@ class Game {
         // strip off trailing space
         mText = mText.substring(0, mText.length() - 1);
 
-        // a checkmate is also a check
-        if (checked) {
+        // a checkmate is also a check (comes with an extra character)
+        if (isChecked) {
             mText = mText.substring(0, mText.length() - 1);
         }
 
@@ -244,7 +256,7 @@ class Game {
                 // push the white half of the turn back to logs
                 mText = mText.substring(0, mText.length() - 5);
                 logs.add(mText);
-            } 
+            }
         }
         if (mText.substring(mText.length() - 3).equals("O-O")) {
             isCastle = 1;
@@ -264,8 +276,7 @@ class Game {
 
             // unmove the King
             var king = KingPosEnd.piece;
-            king.hasMoved = false;
-            king.turnFirstMoved = 0;
+            king.turnFirstMoved = -1;
             KingPosEnd.piece = null;
 
             Position KingPosStart = chessBoard.getSquares()[4][KingPosEnd.getY()];
@@ -310,17 +321,18 @@ class Game {
 
         var startPosStr = mText.substring(mText.length() - 2);
         var startPos = chessBoard.getSquares()[Position.getXFromString(startPosStr)][Position
-                .getYFromString(startPosStr)];        
+                .getYFromString(startPosStr)];
 
         var piece = endPos.piece;
-        // set correct hasMoved
+
         if (piece.turnFirstMoved == turnNo) {
+            // mark piece as unmoved
             piece.turnFirstMoved = -1;
         }
 
         // push the white half of the turn back to logs
         if (turn == Turn.BLACK) {
-            var numToCut = piece.type == Pieces.PAWN ? 2 : 3;    
+            var numToCut = piece.type == Pieces.PAWN ? 2 : 3;
             mText = mText.substring(0, mText.length() - numToCut);
             logs.add(mText);
         }
@@ -342,12 +354,7 @@ class Game {
             }
         }
 
-        // note that the captured piece could have already been restored
-        // if (endPos.piece == piece) {
-        //     endPos.piece = null;
-        // }
-        // startPos.piece = piece;
-        // piece.pos = startPos;
+        // caotured piece is restored later
 
         // return a new move
         if (isCapture) {
@@ -365,8 +372,7 @@ class Game {
 
         var startPos = m.old_pos;
         var p = startPos.piece;
-        if (p.turnFirstMoved == 0 && !p.hasMoved) {
-            p.hasMoved = true;
+        if (p.turnFirstMoved == -1 && !isBeingUndone) {
             p.turnFirstMoved = turnNo;
         }
         var endPos = m.new_pos;
@@ -405,7 +411,7 @@ class Game {
                 throw new IllegalArgumentException("The King is in the wrong column.");
         }
         var rook = rookPosStart.piece;
-        rook.hasMoved = true;
+        rook.turnFirstMoved = turnNo;
         var rookPosEnd = rookMove.new_pos;
         rookPosStart.piece = null;
         rookPosEnd.piece = rook;
