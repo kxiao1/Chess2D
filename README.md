@@ -8,12 +8,13 @@ Built with JavaFX and Maven over Winter Break 2020-21.
 - [x] Piece Logic
 - [x] Check for Checks
 - [x] Captures 
-- [ ] Promoting
+- [x] Promoting
 - [x] Castling 
-- [ ] En Passant
+- [x] En Passant
 - [x] Algebraic Notation and Outputing Logs
 - [x] Restarts
 - [x] Undos
+- [ ] Resigning
 
 ## Possible Extensions
 - Playing with other humans over sockets (``java.net``). In this remote multiplayer mode (which requires a new UI), the player wishing to be White creates a client ``Socket`` and Black starts a ``ServerSocket``. Each process will have two threads, one playing moves locally and the other relaying opponent moves.
@@ -32,10 +33,10 @@ It is possible to build a ``.jar`` package with ``mvn package``. However, runnin
 ## Gameplay
 - Click a piece to see its legal moves highlighted, then click one of the highlighted squares to move it.
 - To castle, move the King and not the Rook. 
-- (TODO) En Passants are automatically performed and promotions are always to Queens.
+- En Passant captures are automatically performed and promotions are always to Queens.
 - Undo's and restarts are permitted starting from the first Black move.
 - The outputed logs follow Portable Game Notation (PGN) but are intentionally verbose: the starting position is always specified. This prevents any ambiguity from the outset.
 
 ## Known issues
-- Linux users: To open the URL for the source code, make sure ``xdg-open`` is installed (e.g.``sudo apt install xdg-utils``).
+- Linux users: To open the URL for the source code, make sure ``xdg-open`` is installed (e.g. ``sudo apt install xdg-utils``).
 

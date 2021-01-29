@@ -12,7 +12,7 @@ buildNumber.properties
 .vscode
 
 # personal notes
-notes.md
+personal/
 
 # default log file
 logs.txt
