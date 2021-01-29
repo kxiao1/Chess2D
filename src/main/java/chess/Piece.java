@@ -10,8 +10,6 @@ public abstract class Piece {
     protected ArrayList<Move> availableMoves;
 
     protected Board chessBoard;
-    protected ArrayList<Piece> ownPieces;
-    protected ArrayList<Piece> oppPieces;
 
     protected Piece(Position pos, Pieces type) {
         if (pos == null) {
