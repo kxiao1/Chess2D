@@ -60,33 +60,21 @@ public class Board {
     }
 
     private Position[][] squares;
-    private Turn turn;
-    private ArrayList<Piece> whitePieces;
-    private ArrayList<Piece> blackPieces;
-    private ArrayList<Piece> ownPieces;
-    private ArrayList<Piece> oppPieces;
+    private Game game;
 
-    Board(Position[][] s, ArrayList<Piece> wp, ArrayList<Piece> bp, Turn t) {
+    Board(Position[][] s, Game g) {
         squares = s;
-        whitePieces = ownPieces = wp;
-        blackPieces = oppPieces = bp;
-        turn = t;
+        game = g;
     }
 
     Position[][] getSquares() {
         return squares;
     }
 
-    void switchTurns() {
-        turn = turn == Turn.BLACK ? Turn.WHITE : Turn.BLACK;
-        ownPieces = turn == Turn.WHITE ? whitePieces : blackPieces;
-        oppPieces = turn == Turn.WHITE ? blackPieces : whitePieces;
-    }
-
     // All pieces
     private boolean willHitOwnPiece(Position start, int x, int y) {
         var newPos = new Position(start.getX() + x, start.getY() + y, null);
-        for (var own : ownPieces) {
+        for (var own : game.ownPieces) {
             if (Position.samePos(own.pos, newPos)) {
                 return true;
             }
@@ -109,7 +97,7 @@ public class Board {
         if (start.piece.type == Pieces.KING) {
             KingPos = newPos;
         } else {
-            for (var own : ownPieces) {
+            for (var own : game.ownPieces) {
                 if (own.type == Pieces.KING) {
                     KingPos = own.pos;
                     break;
@@ -121,7 +109,7 @@ public class Board {
         // King: continue
         // Pawn, Knight: (1) + (2)
         // Rook, Bishop, Queen: (1) + (2) + (3) + (4)
-        for (var opp : oppPieces) {
+        for (var opp : game.oppPieces) {
             if (opp.type == Pieces.KING) {
                 continue;
             }
@@ -182,7 +170,7 @@ public class Board {
     // Pawn when moving forward/ capturing
     public boolean willHitOpponentPiece(Position start, int x, int y) {
         var newPos = new Position(start.getX() + x, start.getY() + y, null);
-        for (var opp : oppPieces) {
+        for (var opp : game.oppPieces) {
             if (Position.samePos(newPos, opp.pos)) {
                 return true;
             }
@@ -200,7 +188,7 @@ public class Board {
         var moves = new ArrayList<Move>();
         if (start.piece.type == Pieces.KING && start.piece.turnFirstMoved == -1) {
             Piece king = start.piece;
-            for (var own : ownPieces) {
+            for (var own : game.ownPieces) {
                 if (own.type == Pieces.ROOK && own.turnFirstMoved == -1) {
                     // both King and Rook must not have moved
                     var rook = own;
@@ -236,18 +224,47 @@ public class Board {
         return (newY == 0 || newY == (NumY - 1));
     }
 
+    public boolean canEnPassant(Position start, int x, int y) {
+        var isBlack = start.piece.isBlack;
+        var reqPawnY = isBlack ? 3 : 4;
+        var actStartY = start.getY();
+        if (actStartY != reqPawnY) {
+            return false;
+        }
+
+        var actStartX = start.getX();
+        var reqPawnX = actStartX + x; // there must be a pawn at (reqPawnX, reqPawnY)
+
+        var reqPos = squares[reqPawnX][reqPawnY];
+        if (reqPos.piece == null || reqPos.piece.type != Pieces.PAWN) {
+            return false;
+        }
+
+        // furthermore this pawn must have just moved
+        var oppPawn = reqPos.piece;
+        var justMoved = false;
+        if (oppPawn.isBlack) {
+            // needs to have first moved in the previous turn
+            justMoved = (oppPawn.turnFirstMoved == game.turnNo - 1);
+        } else {
+            // opp white Pawn needs to have moved in current turn
+            justMoved = (oppPawn.turnFirstMoved == game.turnNo);
+        }
+        return justMoved;
+    }
+
     // needs to be done after a move is made and before the turn changes
     public boolean isCheck() {
-        // loop through each of ownPieces to see if it attacks the opponent's King
+        // loop through each of game.ownPieces to see if it attacks the opponent's King
         Position KingPos = null;
-        for (var opp : oppPieces) {
+        for (var opp : game.oppPieces) {
             if (opp.type == Pieces.KING) {
                 KingPos = opp.pos;
             }
         }
 
-        // for each of ownPieces,
-        for (var own : ownPieces) {
+        // for each of game.ownPieces,
+        for (var own : game.ownPieces) {
             if (own.type == Pieces.KING) {
                 continue;
             }
@@ -290,9 +307,8 @@ public class Board {
         String str = "Current board positions are:\n";
         for (int x = 0; x < NumX; ++x) {
             for (int y = 0; y < NumY; ++y) {
-                str = str + "\t" + squares[x][y].toString() + ": " + 
-                (squares[x][y].piece != null ? squares[x][y].piece.toString() : "null") 
-                + "\n";
+                str = str + "\t" + squares[x][y].toString() + ": "
+                        + (squares[x][y].piece != null ? squares[x][y].piece.toString() : "null") + "\n";
             }
         }
         return str;
