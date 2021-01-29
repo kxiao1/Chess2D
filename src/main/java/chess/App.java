@@ -68,7 +68,17 @@ public class App extends Application {
     }
 
     private void makeUnpromote(Move move) {
-        // TODO
+        var pos = move.old_pos;
+        var sp = (StackPane) scene.lookup("#" + pos.toString() + "_sp");
+        var pawn = pos.piece;
+        var pcPawn = makePieceButton(pawn);
+        var queen = (Button) sp.getChildren().remove(1); // remove the queen
+        sp.getChildren().add(pcPawn);
+
+        var cap = (Label) scene.lookup("#Cap_" + queen.getId());
+        cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
+        cap = (Label) scene.lookup("#Cap_" + pawn.toString());
+        cap.setText(String.valueOf(Integer.valueOf(cap.getText()) - 1));
     }
 
     private void makeUncapture() {
@@ -78,8 +88,7 @@ public class App extends Application {
         var sp = (StackPane) scene.lookup("#" + pos.toString() + "_sp");
         sp.getChildren().add(pc);
         var cap = (Label) scene.lookup("#Cap_" + capPiece.toString());
-        var newChar = (int) cap.getText().charAt(0) - 1;
-        cap.setText(String.valueOf((char) newChar));
+        cap.setText(String.valueOf(Integer.valueOf(cap.getText()) - 1));
     }
 
     private void makeMove(Move move) {
@@ -101,14 +110,9 @@ public class App extends Application {
             var pcCap = (Button) spNew.lookup("#" + capturedPiece.toString());
             spNew.getChildren().remove(pcCap);
             var cap = (Label) scene.lookup("#Cap_" + capturedPiece.toString());
-            var newChar = (int) cap.getText().charAt(0) + 1;
-            cap.setText(String.valueOf((char) newChar));
+            cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
         }
 
-        // check for Checks
-        var checked = game.isCheck();
-
-        // TODO: account for Promotions and En Passant
         switch (move.action) {
             case CASTLE: {
                 var rookMove = game.makeCastle(endPos);
@@ -124,15 +128,38 @@ public class App extends Application {
                 break;
             }
             case PROMOTE: {
+                var pawn = endPos.piece;
+                var queen = game.makeNewQueen(endPos);
+                var spPromote = (StackPane) scene.lookup("#" + endPos.toString() + "_sp");
+                var pcPawn = (Button) spPromote.lookup("#" + pawn.toString());
+                spPromote.getChildren().remove(pcPawn);
+
+                var cap = (Label) scene.lookup("#Cap_" + pawn.toString());
+                cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
+
+                cap = (Label) scene.lookup("#Cap_" + queen.toString());
+                cap.setText(String.valueOf(Integer.valueOf(cap.getText()) - 1));
+
+                var pcQueen = makePieceButton(queen);
+                spPromote.getChildren().add(pcQueen);
                 break;
             }
             case ENPASSANT: {
+                var capPawn = game.makeEnPassant(move);
+                var spCap = (StackPane) scene.lookup("#" + capPawn.pos.toString() + "_sp");
+                var pcPawn = (Button) spCap.lookup("#" + capPawn.toString());
+                spCap.getChildren().remove(pcPawn);
+
+                var cap = (Label) scene.lookup("#Cap_" + capPawn.toString());
+                cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
                 break;
             }
             default:
         }
 
         // account for checks
+        var checked = game.isCheck();
+
         var checkedBox = (Label) scene.lookup("#checkedBox");
         // assuming the move is valid, the current side is not under check
         checkedBox.setVisible(false);
@@ -211,7 +238,7 @@ public class App extends Application {
             throw new NullPointerException("There is no move to undo!");
         }
 
-        // additional actions, if any TODO
+        // additional actions, if any
         switch (toUndo.action) {
             case UNCASTLE:
                 makeUncastle(toUndo);
@@ -235,8 +262,9 @@ public class App extends Application {
 
         // to ensure that the player that undid his move gets to move
         // again next, make a no-op move for the other player
-        makeMove(game.getNoOpKingMove());
         game.switchTurnNoOp();
+        makeMove(game.getNoOpKingMove());
+        game.endNoOp();
 
         // cannot undo further, and there's no point in restarting
         if (game.turn == Turn.WHITE && game.turnNo == 1) {
@@ -316,7 +344,7 @@ public class App extends Application {
     }
 
     private void activatePieces(Turn turn) {
-        var pieces = (turn == Turn.BLACK ? game.blackPieces : game.whitePieces);
+        var pieces = game.ownPieces;
         for (var p : pieces) {
             var sp = (StackPane) scene.lookup("#" + p.pos.toString() + "_sp");
             var pc = (Button) sp.lookup("#" + p.toString());
@@ -327,7 +355,7 @@ public class App extends Application {
     }
 
     private void deactivatePieces(Turn turn) {
-        var pieces = (turn == Turn.BLACK ? game.blackPieces : game.whitePieces);
+        var pieces = game.ownPieces;
         for (var p : pieces) {
             var sp = (StackPane) scene.lookup("#" + p.pos.toString() + "_sp");
             var pc = (Button) sp.lookup("#" + p.toString());
@@ -401,6 +429,7 @@ public class App extends Application {
         var isBlack = pos.isBlack;
         var col = isBlack ? Color.BLACK : Color.WHITE;
         var sq = new Rectangle(squareSize, squareSize, col);
+        sq.setStyle("-fx-stroke: black; -fx-stroke-type: inside; -fx-stroke-width: 0.1;");
         StackPane.setMargin(sq, Insets.EMPTY);
         sq.setId(pos.toString());
 

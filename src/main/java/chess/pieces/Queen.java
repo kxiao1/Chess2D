@@ -6,8 +6,15 @@ import java.util.ArrayList;
 public class Queen extends Piece {
     private int disp[] = { -1, 0, 1 };
 
+    // default constructor
     public Queen(Position pos, Pieces type) {
         super(pos, type);
+    }
+
+    // create a Queen via promotion
+    public Queen(Position pos, Pieces type, boolean isBlack) {
+        this(pos, type); // call the default constructor
+        this.isBlack = isBlack;
     }
 
     public void setAvailableMoves() {

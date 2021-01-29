@@ -14,12 +14,16 @@ class Game {
     Turn turn;
     int turnNo;
     private ArrayList<String> logs;
-    ArrayList<Piece> whitePieces;
-    ArrayList<Piece> blackPieces;
-    private ArrayList<Piece> ownPieces;
-    private ArrayList<Piece> oppPieces;
+
+    private ArrayList<Piece> whitePieces;
+    private ArrayList<Piece> blackPieces;
+    ArrayList<Piece> ownPieces;
+    ArrayList<Piece> oppPieces;
     private ArrayList<Piece> capturedBlack;
     private ArrayList<Piece> capturedWhite;
+    private ArrayList<Piece> promotedWhite;
+    private ArrayList<Piece> promotedBlack;
+
     private Move uncastleKingMove;
     private Piece capturedPieceToRestore;
     private boolean isChecked;
@@ -33,12 +37,16 @@ class Game {
         turn = Turn.WHITE;
         turnNo = 1;
         logs = new ArrayList<String>();
+
         blackPieces = new ArrayList<Piece>();
         whitePieces = new ArrayList<Piece>();
         ownPieces = whitePieces;
         oppPieces = blackPieces;
         capturedBlack = new ArrayList<Piece>();
         capturedWhite = new ArrayList<Piece>();
+        promotedWhite = new ArrayList<Piece>();
+        promotedBlack = new ArrayList<Piece>();
+
         uncastleKingMove = null;
         capturedPieceToRestore = null;
         isChecked = false;
@@ -48,7 +56,7 @@ class Game {
         isNoOp = false;
 
         var squares = new Position[Board.NumX][];
-        chessBoard = new Board(squares, whitePieces, blackPieces, turn);
+        chessBoard = new Board(squares, this);
         for (int x = 0; x < Board.NumX; ++x) {
             squares[x] = new Position[Board.NumY];
             for (int y = 0; y < Board.NumY; ++y) {
@@ -80,12 +88,8 @@ class Game {
                     newPiece.chessBoard = chessBoard;
                     pos.piece = newPiece;
                     if (newPiece.isBlack) {
-                        newPiece.ownPieces = blackPieces;
-                        newPiece.oppPieces = whitePieces;
                         blackPieces.add(newPiece);
                     } else {
-                        newPiece.ownPieces = whitePieces;
-                        newPiece.oppPieces = blackPieces;
                         whitePieces.add(newPiece);
                     }
                 }
@@ -101,7 +105,6 @@ class Game {
         turn = turn == Turn.BLACK ? Turn.WHITE : Turn.BLACK;
         ownPieces = turn == Turn.WHITE ? whitePieces : blackPieces;
         oppPieces = turn == Turn.WHITE ? blackPieces : whitePieces;
-        chessBoard.switchTurns();
     }
 
     // Return true if the current player has moves to make
@@ -128,7 +131,7 @@ class Game {
             }
             return false;
         }
-        
+
         return true;
     }
 
@@ -143,7 +146,7 @@ class Game {
     boolean isCheck() {
         if (isBeingUndone) {
             return false;
-        } 
+        }
         isChecked = chessBoard.isCheck();
         if (isChecked && !isNoOp) {
             var lastLogs = logs.remove(logs.size() - 1);
@@ -173,10 +176,10 @@ class Game {
         lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# " + (turn == Turn.BLACK ? "1-0" : "0-1");
         logs.add(lastEntry);
     }
-    
+
     void indicateStalemate() {
         var lastEntry = logs.remove(logs.size() - 1);
-        lastEntry = lastEntry + "1/2-1/2";  
+        lastEntry = lastEntry + "1/2-1/2";
         logs.add(lastEntry);
     }
 
@@ -193,8 +196,10 @@ class Game {
     // Account for the extra turn increment after NOP move
     void switchTurnNoOp() {
         turnNo--;
+    }
 
-        // end no-op sequence
+    // end no-op sequence
+    void endNoOp() {
         isNoOp = false;
     }
 
@@ -210,7 +215,7 @@ class Game {
             }
             capturedPieceToRestore = null;
         }
-        
+
         // complete the undoing sequence
         isBeingUndone = false;
 
@@ -333,7 +338,7 @@ class Game {
         }
 
         var isPromote = false;
-        if (mText.substring(mText.length() - 2).equals("=P")) {
+        if (mText.substring(mText.length() - 2).equals("=Q")) {
             mText = mText.substring(0, mText.length() - 2);
             isPromote = true;
         }
@@ -361,7 +366,7 @@ class Game {
 
         // push the white half of the turn back to logs
         if (turn == Turn.BLACK) {
-            var numToCut = piece.type == Pieces.PAWN ? 2 : 3;
+            var numToCut = (isPromote || piece.type == Pieces.PAWN) ? 2 : 3;
             mText = mText.substring(0, mText.length() - numToCut);
             logs.add(mText);
         }
@@ -373,17 +378,25 @@ class Game {
             capturedPieceToRestore = capPiece;
         }
 
-        // un-promote if needed TODO
+        // un-promote if needed
         if (isPromote) {
             // restore the pawn, adjust its state etc.
+            var Queen = piece;
+            ownPieces.remove(Queen);
+            var pawn = Queen.isBlack ? promotedBlack.remove(promotedBlack.size() - 1)
+                    : promotedWhite.remove(promotedWhite.size() - 1);
+
+            pawn.pos.piece = pawn;
+            ownPieces.add(pawn);
+
             if (isCapture) {
-                // return (... UNPROMOTEandUNCAPTURE)
+                return new Move(pawn.toString(), endPos, startPos, Action.UNPROMOTEandUNCAPTURE);
             } else {
-                // return (... UNPROMOTE)
+                return new Move(pawn.toString(), endPos, startPos, Action.UNPROMOTE);
             }
         }
 
-        // caotured piece is restored later
+        // captured piece is restored later
 
         // return a new move
         if (isCapture) {
@@ -394,8 +407,8 @@ class Game {
 
     // Updates state and returns captured piece if any
     Piece makeMoveAndCapture(Move m) {
-        // if start and end pos are the same, the NOP move should not change state
-        if (Position.samePos(m.old_pos, m.new_pos)) {
+        // Since start and end pos are the same, the NOP move should not change state
+        if (isNoOp) {
             return null;
         }
 
@@ -448,18 +461,45 @@ class Game {
         return rookMove;
     }
 
-    // Promotions TODO
-    Piece makeNewPiece(Position pos) {
+    // Promotion to Queen
+    Piece makeNewQueen(Position pos) {
         // similar to a capture, but don't add to captured list
+        var pawn = pos.piece;
+        ownPieces.remove(pawn);
+        pos.piece = null;
+
+        if (pawn.isBlack) {
+            promotedBlack.add(pawn);
+        } else {
+            promotedWhite.add(pawn);
+        }
+
+        Piece queen = new Queen(pos, Pieces.QUEEN, pawn.isBlack);
+        queen.chessBoard = this.chessBoard;
+        pos.piece = queen;
+        ownPieces.add(queen);
 
         // return the new Queen
-        return null;
+        return queen;
     }
 
-    // En Passant TODO
+    // En Passant
     Piece makeEnPassant(Move m) {
+        var targetX = m.new_pos.getX();
+        var targetY = m.old_pos.getY();
+        var capSq = chessBoard.getSquares()[targetX][targetY];
+        if (capSq.piece == null || capSq.piece.type != Pieces.PAWN) {
+            throw new IllegalArgumentException("There is no pawn to capture En Passant.");
+        }
+        var pawn = capSq.piece;
+        oppPieces.remove(pawn);
+        if (pawn.isBlack) {
+            capturedBlack.add(pawn);
+        } else {
+            capturedWhite.add(pawn);
+        }
 
         // return captured piece
-        return null;
+        return pawn;
     }
 }
