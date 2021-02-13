@@ -171,6 +171,13 @@ class Game {
         }
     }
 
+    void indicateResign() {
+        isCheckmated = true;
+        var lastEntry = logs.remove(logs.size() - 1);
+        lastEntry = lastEntry + (turn == Turn.BLACK ? "1-0" : "0-1");
+        logs.add(lastEntry);
+    }
+
     void indicateCheckmate() {
         var lastEntry = logs.remove(logs.size() - 1);
         lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# " + (turn == Turn.BLACK ? "1-0" : "0-1");

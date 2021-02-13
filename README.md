@@ -14,7 +14,7 @@ Built with JavaFX and Maven over Winter Break 2020-21.
 - [x] Algebraic Notation and Outputing Logs
 - [x] Restarts
 - [x] Undos
-- [ ] Resigning
+- [x] Resigning
 
 ## Possible Extensions
 - Playing with other humans over sockets (``java.net``). In this remote multiplayer mode (which requires a new UI), the player wishing to be White creates a client ``Socket`` and Black starts a ``ServerSocket``. Each process will have two threads, one playing moves locally and the other relaying opponent moves.

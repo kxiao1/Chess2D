@@ -43,7 +43,7 @@ public class App extends Application {
     final int tiny = 25;
     final int numCanCapture = 5;
     final Font defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
-    final Font checkFont = Font.font("Serif", FontWeight.NORMAL, 16);
+    final Font checkFont = Font.font("Serif", FontWeight.NORMAL, 14);
     final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
     final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
     final String hoverStyle = "-fx-border-color: red; -fx-background-color: transparent";
@@ -52,6 +52,35 @@ public class App extends Application {
 
     Game game;
     Scene scene;
+
+    private void makeResign() {
+        game.indicateResign();
+        var resignBtn = (Button) scene.lookup("#resignBtn");
+        resignBtn.setDisable(true); // cannot resign twice
+        var l = (Label) scene.lookup("#checkedBox");
+        l.setText("RESIGNED");
+        l.setVisible(true);
+
+        var text = game.turn.toString() + " has resigned.\nSave logs to " + System.getProperty("user.dir")
+                + "/logs.txt?";
+        var header = "Resigned";
+
+        var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
+        alert.setHeaderText(header);
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent()) {
+            if (result.get() == ButtonType.OK) {
+                game.saveLogs();
+            }
+            // disable the board
+            var b = (TilePane) scene.lookup("#chessboard");
+            b.setDisable(true);
+
+            // prompt a restart
+            var ctrl = (Button) scene.lookup("#restartBtn");
+            ctrl.requestFocus();
+        }
+    }
 
     private void makeUncastle(Move move) {
         var kingMove = game.getUncastleKingMove();
@@ -196,6 +225,10 @@ public class App extends Application {
                         + System.getProperty("user.dir") + "/logs.txt?";
                 header = "Stalemate!";
             }
+            
+            var resignBtn = (Button) scene.lookup("#resignBtn");
+            resignBtn.setDisable(true); // cannot resign after game has ended
+            
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             alert.setHeaderText(header);
             Optional<ButtonType> result = alert.showAndWait();
@@ -266,10 +299,16 @@ public class App extends Application {
         makeMove(game.getNoOpKingMove());
         game.endNoOp();
 
+        var resignBtn = (Button) scene.lookup("#resignBtn");
+        if (game.turnNo >= 2) {
+            resignBtn.setDisable(false);
+        }
+
         // cannot undo further, and there's no point in restarting
         if (game.turn == Turn.WHITE && game.turnNo == 1) {
             var restartBtn = (Button) scene.lookup("#restartBtn");
             var undoBtn = (Button) scene.lookup("#undoBtn");
+            resignBtn.setDisable(true);
             restartBtn.setDisable(true);
             undoBtn.setDisable(true);
         }
@@ -290,6 +329,9 @@ public class App extends Application {
             var sq = (Rectangle) sp.lookup("#" + pos.toString());
             sq.setFill(Color.DARKRED);
 
+            var restartBtn = (Button) scene.lookup("#restartBtn");
+            var undoBtn = (Button) scene.lookup("#undoBtn");
+            var resignBtn = (Button) scene.lookup("#resignBtn");
             if (pos.piece != null) {
                 // if occupied, enable the button
                 var pc = (Button) sp.lookup("#" + pos.piece.toString());
@@ -298,10 +340,9 @@ public class App extends Application {
                     game.addToLogs(move);
                     makeMove(move);
                     if (game.turn == Turn.BLACK && game.turnNo == 1) {
-                        var restartBtn = (Button) scene.lookup("#restartBtn");
-                        var undoBtn = (Button) scene.lookup("#undoBtn");
                         restartBtn.setDisable(false);
                         undoBtn.setDisable(false);
+                        resignBtn.setDisable(false);
                     }
                 });
             } else {
@@ -310,10 +351,9 @@ public class App extends Application {
                     game.addToLogs(move);
                     makeMove(move);
                     if (game.turn == Turn.BLACK && game.turnNo == 1) {
-                        var restartBtn = (Button) scene.lookup("#restartBtn");
-                        var undoBtn = (Button) scene.lookup("#undoBtn");
                         restartBtn.setDisable(false);
                         undoBtn.setDisable(false);
+                        resignBtn.setDisable(false);
                     }
                 });
             }
@@ -504,10 +544,14 @@ public class App extends Application {
         checkedBox.setFont(checkFont);
         checkedBox.setTextFill(Color.RED);
         checkedBox.setId("checkedBox");
-        checkedBox.setVisible(false);
-        ; // by default this text should be invisible
+        checkedBox.setVisible(false); // by default this text should be invisible
 
-        var Toolbar = new VBox(10, title, checkedBox);
+        var resignBtn = new Button("Resign");
+        resignBtn.setOnAction(e -> makeResign());
+        resignBtn.setId("resignBtn");
+        resignBtn.setDisable(true); // cannot resign before starting a game
+
+        var Toolbar = new VBox(5, title, resignBtn, checkedBox);
         Toolbar.setPadding(new Insets(30, 5, 0, 5));
         Toolbar.setAlignment(Pos.BOTTOM_CENTER);
 
