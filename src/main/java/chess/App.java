@@ -3,8 +3,10 @@ package chess;
 import javafx.application.Application;
 import javafx.application.Platform;
 
-import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
+
+import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.TilePane;
@@ -18,6 +20,8 @@ import javafx.scene.image.*;
 
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Button;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 
@@ -33,6 +37,9 @@ import javafx.scene.paint.Color;
 import java.util.ArrayList;
 import java.util.Optional;
 
+// I/O
+import java.io.File;
+
 /**
  * JavaFX App
  */
@@ -47,11 +54,13 @@ public class App extends Application {
     final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
     final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
     final String hoverStyle = "-fx-border-color: red; -fx-background-color: transparent";
+    final int buttonWidth = small * numCanCapture - 2 * tiny;
 
     ArrayList<Position> highlightedPos = new ArrayList<Position>();
 
     Game game;
     Scene scene;
+    boolean live; // false = Read game from logs
 
     private void makeResign() {
         game.indicateResign();
@@ -225,10 +234,10 @@ public class App extends Application {
                         + System.getProperty("user.dir") + "/logs.txt?";
                 header = "Stalemate!";
             }
-            
+
             var resignBtn = (Button) scene.lookup("#resignBtn");
             resignBtn.setDisable(true); // cannot resign after game has ended
-            
+
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             alert.setHeaderText(header);
             Optional<ButtonType> result = alert.showAndWait();
@@ -500,12 +509,21 @@ public class App extends Application {
         }
     }
 
-    private void initUI(Stage stage, boolean shouldStartGame) {
+    private boolean readFile(Stage stage) {
+        var fc = new FileChooser();
+        fc.setTitle("Choose Log File");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
+        File f = fc.showOpenDialog(stage);
+        return game.readFile(f);
+    }
 
+    private void initUI(Stage stage, boolean shouldStartGame, boolean l) {
+        System.out.println(l ? "LIVE Mode" : "READ Mode");
         game = new Game();
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> Platform.runLater(() -> showErrorDialog(t, e)));
         // https://stackoverflow.com/questions/25145956/how-can-i-create-a-default-exception-handler-that-uses-javafx
 
+        live = l;
         // bottom
         var javaVersion = System.getProperty("java.version");
         var javafxVersion = System.getProperty("javafx.version");
@@ -556,30 +574,63 @@ public class App extends Application {
         Toolbar.setAlignment(Pos.BOTTOM_CENTER);
 
         // left: gameplay buttons
-        var startBtn = new Button("Start");
-        startBtn.setOnAction(e -> {
-            var t = (Label) Toolbar.lookup("#titleText");
-            t.setText(game.turn + " to play.");
-            startBtn.setDisable(true);
-            game.getAllMoves();
-            activatePieces(game.turn);
-            title.requestFocus();
-        });
-        startBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
+        var g = new ToggleGroup();
+        var tLive = new RadioButton("LIVE");
+        tLive.setToggleGroup(g);
+        tLive.setSelected(live);
+        tLive.setMaxWidth(0.5 * small * numCanCapture);
+        tLive.setUserData(true);
 
-        var undoBtn = new Button("Undo");
+        var tRead = new RadioButton("READ");
+        tRead.setToggleGroup(g);
+        tRead.setSelected(!live);
+        tRead.setMaxWidth(0.5 * small * numCanCapture);
+        tRead.setUserData(false);
+
+        g.selectedToggleProperty().addListener((ov, o, n) -> {
+            initUI(stage, false, (boolean) n.getUserData());
+        });
+        var toggles = new HBox(5, tLive, tRead);
+        toggles.setAlignment(Pos.CENTER);
+
+        var startBtn = new Button("Start");
+        if (live) {
+            startBtn.setOnAction(e -> {
+                var t = (Label) Toolbar.lookup("#titleText");
+                t.setText(game.turn + "'s Turn");
+                startBtn.setDisable(true);
+                game.getAllMoves();
+                activatePieces(game.turn);
+                title.requestFocus();
+            });
+        } else {
+            startBtn.setOnAction(e -> {
+                var t = (Label) Toolbar.lookup("#titleText");
+                t.setText(game.turn + "'s Turn");
+                if (readFile(stage)) { // if successful
+                    startBtn.setDisable(true);
+                    // game.getAllMoves(); # do not allow manual moves!
+                    // activatePieces(game.turn);
+                    title.requestFocus();
+
+                } // else allow user to select a new file
+            });
+        }
+        startBtn.setMaxWidth(buttonWidth);
+
+        var undoBtn = new Button(live ? "Undo" : "Prev");
         undoBtn.setId("undoBtn");
         undoBtn.setOnAction(e -> makeUndo());
         undoBtn.setDisable(true);
-        undoBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
+        undoBtn.setMaxWidth(buttonWidth);
 
         var restartBtn = new Button("Restart");
         restartBtn.setId("restartBtn");
         restartBtn.setOnAction(e -> {
-            initUI(stage, true);
+            initUI(stage, true, live);
         });
         restartBtn.setDisable(true);
-        restartBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
+        restartBtn.setMaxWidth(buttonWidth);
 
         var saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
@@ -592,7 +643,13 @@ public class App extends Application {
                 game.saveLogs();
             }
         });
-        saveBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
+        saveBtn.setMaxWidth(buttonWidth);
+
+        var redoBtn = new Button(live ? "Redo" : "Next");
+        redoBtn.setOnAction(e -> {
+            System.out.println("To be Implemented");
+        });
+        redoBtn.setMaxWidth(buttonWidth);
 
         var quitBtn = new Button("Quit");
         quitBtn.setOnAction(e -> {
@@ -604,9 +661,9 @@ public class App extends Application {
                 Platform.exit();
             }
         });
-        quitBtn.setMaxWidth(small * numCanCapture - 2 * tiny);
+        quitBtn.setMaxWidth(buttonWidth);
 
-        VBox ctrls = new VBox(10, startBtn, undoBtn, restartBtn, saveBtn, quitBtn);
+        VBox ctrls = new VBox(10, toggles, startBtn, undoBtn, redoBtn, restartBtn, saveBtn, quitBtn);
         ctrls.setPadding(new Insets(10));
         ctrls.setMinWidth(small * numCanCapture + 18); // best effort at aligning
         ctrls.setAlignment(Pos.CENTER);
@@ -690,7 +747,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) {
-        initUI(stage, false);
+        initUI(stage, false, true);
     }
 
     public static void main(String[] args) {

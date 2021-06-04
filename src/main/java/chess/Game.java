@@ -1,8 +1,12 @@
 package chess;
 
+import java.io.File;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
+
 import java.util.ArrayList;
 import chess.pieces.*;
 
@@ -13,7 +17,9 @@ enum Turn {
 class Game {
     Turn turn;
     int turnNo;
-    private ArrayList<String> logs;
+    private ArrayList<String> logs; // what user does in this session
+    private ArrayList<String> refLogs; // what is read in
+    private boolean logsVerbose; // TODO: parse logs differently
 
     private ArrayList<Piece> whitePieces;
     private ArrayList<Piece> blackPieces;
@@ -192,11 +198,47 @@ class Game {
 
     void saveLogs() {
         try (var log = new BufferedWriter(new FileWriter("logs.txt"))) {
+            log.write("verbose\n");
             for (var line : logs) {
                 log.write(line);
             }
         } catch (IOException e) {
             System.out.println(e);
+        }
+    }
+
+    boolean readFile(File f) {
+        try (var logReader = new BufferedReader(new FileReader(f))) {
+            System.out.println("File Reading #Todo");
+            String firstLine = logReader.readLine();
+            if (firstLine == null) {
+                // throw new IllegalArgumentException("Empty log file");
+                System.out.println("Empty log file. Please retry.");
+                return false;
+            }
+            logs = new ArrayList<String>();
+            String log_string;
+            if (firstLine.equals("verbose")) {
+                logsVerbose = true;
+                log_string = logReader.readLine();
+                if (log_string == null) {
+                    System.out.println("No log contents.");
+                    return false;
+                }
+            } else {
+                logsVerbose = false;
+                log_string = firstLine;
+            }
+
+            refLogs = new ArrayList<String>();
+            for (var str : log_string.split(" ")) {
+                refLogs.add(str);
+                System.out.println(str);
+            }
+            return true;
+        } catch (IOException e) {
+            System.out.println(e);
+            return false;
         }
     }
 
