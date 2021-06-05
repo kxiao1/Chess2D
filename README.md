@@ -21,7 +21,7 @@ Built with JavaFX and Maven over Winter Break 2020-21.
 ## Possible Extensions
 
 - Playing with other humans over sockets (`java.net`). In this remote multiplayer mode (which requires a new UI), the player wishing to be White creates a client `Socket` and Black starts a `ServerSocket`. Each process will have two threads, one playing moves locally and the other relaying opponent moves.
-- ~~Replaying games from logs. Need to implement move-parsing and create a new UI; some fast-forwarding functionality would be desirable here.~~ (<i>In Progress Summer 2021! </i>)
+- ~~Replaying games from logs. Need to implement move-parsing and create a new UI; some fast-forwarding functionality would be desirable here.~~ (<i>In Progress Summer 2021!</i>)
 - Installing a customizable timer. The countdown display can be controlled with a property binding (e.g. `Label.textProperty().bind(TIMELEFT)`, thanks to `javafx.beans.property.IntegerProperty`). The numerical value can be updated with a `Timeline` and `KeyFrame` from `javafx.animation`.
 
 ## Usage

@@ -70,8 +70,8 @@ public class App extends Application {
         l.setText("RESIGNED");
         l.setVisible(true);
 
-        var text = game.turn.toString() + " has resigned.\nSave logs to " + System.getProperty("user.dir")
-                + "/logs.txt?";
+        var text = game.turn.toString() + " has resigned.\nSave logs to "
+                + System.getProperty("user.dir") + "/logs.txt?";
         var header = "Resigned";
 
         var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
@@ -101,7 +101,8 @@ public class App extends Application {
         var pc = (Button) sp.lookup("#" + king.toString());
         sp.getChildren().remove(pc);
 
-        var spNew = (StackPane) scene.lookup("#" + newKingPos.toString() + "_sp");
+        var spNew = (StackPane) scene
+                .lookup("#" + newKingPos.toString() + "_sp");
         spNew.getChildren().add(pc);
     }
 
@@ -152,47 +153,51 @@ public class App extends Application {
         }
 
         switch (move.action) {
-            case CASTLE: {
-                var rookMove = game.makeCastle(endPos);
-                var startPosRook = rookMove.old_pos;
-                var endPosRook = rookMove.new_pos;
-                var rook = endPosRook.piece;
-                var spRook = (StackPane) scene.lookup("#" + startPosRook.toString() + "_sp");
-                var pcRook = (Button) spRook.lookup("#" + rook.toString());
-                spRook.getChildren().remove(pcRook);
+        case CASTLE: {
+            var rookMove = game.makeCastle(endPos);
+            var startPosRook = rookMove.old_pos;
+            var endPosRook = rookMove.new_pos;
+            var rook = endPosRook.piece;
+            var spRook = (StackPane) scene
+                    .lookup("#" + startPosRook.toString() + "_sp");
+            var pcRook = (Button) spRook.lookup("#" + rook.toString());
+            spRook.getChildren().remove(pcRook);
 
-                var spRookNew = (StackPane) scene.lookup("#" + endPosRook.toString() + "_sp");
-                spRookNew.getChildren().add(pcRook);
-                break;
-            }
-            case PROMOTE: {
-                var pawn = endPos.piece;
-                var queen = game.makeNewQueen(endPos);
-                var spPromote = (StackPane) scene.lookup("#" + endPos.toString() + "_sp");
-                var pcPawn = (Button) spPromote.lookup("#" + pawn.toString());
-                spPromote.getChildren().remove(pcPawn);
+            var spRookNew = (StackPane) scene
+                    .lookup("#" + endPosRook.toString() + "_sp");
+            spRookNew.getChildren().add(pcRook);
+            break;
+        }
+        case PROMOTE: {
+            var pawn = endPos.piece;
+            var queen = game.makeNewQueen(endPos);
+            var spPromote = (StackPane) scene
+                    .lookup("#" + endPos.toString() + "_sp");
+            var pcPawn = (Button) spPromote.lookup("#" + pawn.toString());
+            spPromote.getChildren().remove(pcPawn);
 
-                var cap = (Label) scene.lookup("#Cap_" + pawn.toString());
-                cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
+            var cap = (Label) scene.lookup("#Cap_" + pawn.toString());
+            cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
 
-                cap = (Label) scene.lookup("#Cap_" + queen.toString());
-                cap.setText(String.valueOf(Integer.valueOf(cap.getText()) - 1));
+            cap = (Label) scene.lookup("#Cap_" + queen.toString());
+            cap.setText(String.valueOf(Integer.valueOf(cap.getText()) - 1));
 
-                var pcQueen = makePieceButton(queen);
-                spPromote.getChildren().add(pcQueen);
-                break;
-            }
-            case ENPASSANT: {
-                var capPawn = game.makeEnPassant(move);
-                var spCap = (StackPane) scene.lookup("#" + capPawn.pos.toString() + "_sp");
-                var pcPawn = (Button) spCap.lookup("#" + capPawn.toString());
-                spCap.getChildren().remove(pcPawn);
+            var pcQueen = makePieceButton(queen);
+            spPromote.getChildren().add(pcQueen);
+            break;
+        }
+        case ENPASSANT: {
+            var capPawn = game.makeEnPassant(move);
+            var spCap = (StackPane) scene
+                    .lookup("#" + capPawn.pos.toString() + "_sp");
+            var pcPawn = (Button) spCap.lookup("#" + capPawn.toString());
+            spCap.getChildren().remove(pcPawn);
 
-                var cap = (Label) scene.lookup("#Cap_" + capPawn.toString());
-                cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
-                break;
-            }
-            default:
+            var cap = (Label) scene.lookup("#Cap_" + capPawn.toString());
+            cap.setText(String.valueOf(Integer.valueOf(cap.getText()) + 1));
+            break;
+        }
+        default:
         }
 
         // account for checks
@@ -225,12 +230,14 @@ public class App extends Application {
                 // checkmate
                 checkedBox.setText("CHECKMATE");
                 game.indicateCheckmate();
-                text = game.turn.toString() + " has been checkmated.\nSave logs to " + System.getProperty("user.dir")
-                        + "/logs.txt?";
+                text = game.turn.toString()
+                        + " has been checkmated.\nSave logs to "
+                        + System.getProperty("user.dir") + "/logs.txt?";
                 header = "Checkmate!";
             } else {
-                game.indicateStalemate();
-                text = game.turn.toString() + " has no more moves. Stalemate.\nSave logs to "
+                // game.indicateStalemate();
+                text = game.turn.toString()
+                        + " has no more moves. Stalemate.\nSave logs to "
                         + System.getProperty("user.dir") + "/logs.txt?";
                 header = "Stalemate!";
             }
@@ -282,21 +289,21 @@ public class App extends Application {
 
         // additional actions, if any
         switch (toUndo.action) {
-            case UNCASTLE:
-                makeUncastle(toUndo);
-                break;
-            case UNPROMOTE:
-                makeUnpromote(toUndo);
-                break;
-            case UNPROMOTEandUNCAPTURE:
-                makeUnpromote(toUndo);
-                makeUncapture();
-                break;
-            case UNCAPTURE:
-                makeUncapture();
-                break;
-            default:
-                break;
+        case UNCASTLE:
+            makeUncastle(toUndo);
+            break;
+        case UNPROMOTE:
+            makeUnpromote(toUndo);
+            break;
+        case UNPROMOTEandUNCAPTURE:
+            makeUnpromote(toUndo);
+            makeUncapture();
+            break;
+        case UNCAPTURE:
+            makeUncapture();
+            break;
+        default:
+            break;
         }
 
         makeMove(toUndo);
@@ -418,16 +425,21 @@ public class App extends Application {
         var grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
         var suff = isBlack ? "_black" : "_white";
-        var Queen = new ImageView(
-                new Image(getClass().getResourceAsStream("/icons/QUEEN" + suff + ".png"), small, small, false, false));
-        var Rook = new ImageView(
-                new Image(getClass().getResourceAsStream("/icons/ROOK" + suff + ".png"), small, small, false, false));
-        var Knight = new ImageView(
-                new Image(getClass().getResourceAsStream("/icons/KNIGHT" + suff + ".png"), small, small, false, false));
-        var Bishop = new ImageView(
-                new Image(getClass().getResourceAsStream("/icons/BISHOP" + suff + ".png"), small, small, false, false));
-        var Pawn = new ImageView(
-                new Image(getClass().getResourceAsStream("/icons/PAWN" + suff + ".png"), small, small, false, false));
+        var Queen = new ImageView(new Image(
+                getClass().getResourceAsStream("/icons/QUEEN" + suff + ".png"),
+                small, small, false, false));
+        var Rook = new ImageView(new Image(
+                getClass().getResourceAsStream("/icons/ROOK" + suff + ".png"),
+                small, small, false, false));
+        var Knight = new ImageView(new Image(
+                getClass().getResourceAsStream("/icons/KNIGHT" + suff + ".png"),
+                small, small, false, false));
+        var Bishop = new ImageView(new Image(
+                getClass().getResourceAsStream("/icons/BISHOP" + suff + ".png"),
+                small, small, false, false));
+        var Pawn = new ImageView(new Image(
+                getClass().getResourceAsStream("/icons/PAWN" + suff + ".png"),
+                small, small, false, false));
         var QueenCap = new Label("0");
         QueenCap.setId("Cap_QUEEN" + suff);
         var RookCap = new Label("0");
@@ -463,7 +475,8 @@ public class App extends Application {
         pc.setStyle(idleStyle);
         pc.setDisable(true); // all pieces disabled before game starts
         String path = "/icons/" + piece.toString() + ".png";
-        Image img = new Image(getClass().getResourceAsStream(path), squareSize * 0.95, squareSize * 0.95, false, false);
+        Image img = new Image(getClass().getResourceAsStream(path),
+                squareSize * 0.95, squareSize * 0.95, false, false);
         pc.setGraphic(new ImageView(img));
         pc.setPadding(Insets.EMPTY);
         StackPane.setMargin(pc, Insets.EMPTY);
@@ -478,7 +491,8 @@ public class App extends Application {
         var isBlack = pos.isBlack;
         var col = isBlack ? Color.BLACK : Color.WHITE;
         var sq = new Rectangle(squareSize, squareSize, col);
-        sq.setStyle("-fx-stroke: black; -fx-stroke-type: inside; -fx-stroke-width: 0.1;");
+        sq.setStyle(
+                "-fx-stroke: black; -fx-stroke-type: inside; -fx-stroke-width: 0.1;");
         StackPane.setMargin(sq, Insets.EMPTY);
         sq.setId(pos.toString());
 
@@ -495,24 +509,26 @@ public class App extends Application {
 
     private void showErrorDialog(Thread t, Throwable e) {
         e.printStackTrace();
-        var text = "A Fatal Error has occurred in the App.\nPlease restart.";
+        var text = "A Fatal Error has occurred in the App.\nPlease restart the app.";
         var alert = new Alert(Alert.AlertType.ERROR, text);
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // disable the board
-            var b = (TilePane) scene.lookup("#chessboard");
-            b.setDisable(true);
+            Platform.exit();
+            // // disable the board
+            // var b = (TilePane) scene.lookup("#chessboard");
+            // b.setDisable(true);
 
-            // prompt a restart
-            var ctrl = (Button) scene.lookup("#restartBtn");
-            ctrl.requestFocus();
+            // // prompt a restart
+            // var ctrl = (Button) scene.lookup("#restartBtn");
+            // ctrl.requestFocus();
         }
     }
 
     private boolean readFile(Stage stage) {
         var fc = new FileChooser();
         fc.setTitle("Choose Log File");
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
+        fc.getExtensionFilters()
+                .add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
         File f = fc.showOpenDialog(stage);
         return game.readFile(f);
     }
@@ -520,14 +536,16 @@ public class App extends Application {
     private void initUI(Stage stage, boolean shouldStartGame, boolean l) {
         System.out.println(l ? "LIVE Mode" : "READ Mode");
         game = new Game();
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> Platform.runLater(() -> showErrorDialog(t, e)));
+        Thread.setDefaultUncaughtExceptionHandler(
+                (t, e) -> Platform.runLater(() -> showErrorDialog(t, e)));
         // https://stackoverflow.com/questions/25145956/how-can-i-create-a-default-exception-handler-that-uses-javafx
 
         live = l;
         // bottom
         var javaVersion = System.getProperty("java.version");
         var javafxVersion = System.getProperty("javafx.version");
-        var info = new Label("App is running on JavaFX " + javafxVersion + " and Java " + javaVersion + ".");
+        var info = new Label("App is running on JavaFX " + javafxVersion
+                + " and Java " + javaVersion + ".");
         info.setFont(defaultFont);
 
         var link1 = new Hyperlink("Icons licensed by icons8");
@@ -554,7 +572,8 @@ public class App extends Application {
         footer.setAlignment(Pos.CENTER);
 
         // top: toolbar
-        var title = new Label("“There is no remorse like the remorse of chess.”");
+        var title = new Label(
+                "“There is no remorse like the remorse of chess.”");
         title.setFont(titleFont);
         title.setId("titleText");
 
@@ -562,7 +581,8 @@ public class App extends Application {
         checkedBox.setFont(checkFont);
         checkedBox.setTextFill(Color.RED);
         checkedBox.setId("checkedBox");
-        checkedBox.setVisible(false); // by default this text should be invisible
+        checkedBox.setVisible(false); // by default this text should be
+                                      // invisible
 
         var resignBtn = new Button("Resign");
         resignBtn.setOnAction(e -> makeResign());
@@ -634,8 +654,8 @@ public class App extends Application {
 
         var saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
-            var text = "Save logs to " + System.getProperty("user.dir") + "/logs.txt?\n"
-                    + "This will overwrite any existing file.";
+            var text = "Save logs to " + System.getProperty("user.dir")
+                    + "/logs.txt?\n" + "This will overwrite any existing file.";
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             alert.setHeaderText("Saving logs");
             var result = alert.showAndWait();
@@ -654,7 +674,7 @@ public class App extends Application {
         var quitBtn = new Button("Quit");
         quitBtn.setOnAction(e -> {
             var text = "Remember to save before quitting!";
-            var alert = new Alert(Alert.AlertType.WARNING, text);
+            var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             alert.setHeaderText("You are closing the app.");
             var result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -663,9 +683,11 @@ public class App extends Application {
         });
         quitBtn.setMaxWidth(buttonWidth);
 
-        VBox ctrls = new VBox(10, toggles, startBtn, undoBtn, redoBtn, restartBtn, saveBtn, quitBtn);
+        VBox ctrls = new VBox(10, toggles, startBtn, undoBtn, redoBtn,
+                restartBtn, saveBtn, quitBtn);
         ctrls.setPadding(new Insets(10));
-        ctrls.setMinWidth(small * numCanCapture + 18); // best effort at aligning
+        ctrls.setMinWidth(small * numCanCapture + 18); // best effort at
+                                                       // aligning
         ctrls.setAlignment(Pos.CENTER);
 
         // right: captured pieces
@@ -698,7 +720,8 @@ public class App extends Application {
 
         var centerGrid = new GridPane();
         centerGrid.setStyle("-fx-background-color: white");
-        centerGrid.setMaxSize(Board.NumX * squareSize + 2 * tiny + 2, Board.NumY * squareSize + 2 * tiny + 2);
+        centerGrid.setMaxSize(Board.NumX * squareSize + 2 * tiny + 2,
+                Board.NumY * squareSize + 2 * tiny + 2);
         centerGrid.setAlignment(Pos.CENTER);
 
         // it suffices to set only the top left and bottom right dummies

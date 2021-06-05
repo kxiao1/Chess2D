@@ -1,0 +1,3 @@
+[Event "Own"]
+
+1.e2e4 e7e5 2.Qd1h5 Nb8c6 3.Bf1c4 Ng8f6 4.Qh5xf7#  1-0
