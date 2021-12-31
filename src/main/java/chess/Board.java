@@ -74,7 +74,7 @@ public class Board {
     // All pieces
     private boolean willHitOwnPiece(Position start, int x, int y) {
         var newPos = new Position(start.getX() + x, start.getY() + y, null);
-        for (var own : game.ownPieces) {
+        for (var own : game.getOwnPieces()) {
             if (Position.samePos(own.pos, newPos)) {
                 return true;
             }
@@ -97,7 +97,7 @@ public class Board {
         if (start.piece.type == Pieces.KING) {
             KingPos = newPos;
         } else {
-            for (var own : game.ownPieces) {
+            for (var own : game.getOwnPieces()) {
                 if (own.type == Pieces.KING) {
                     KingPos = own.pos;
                     break;
@@ -109,7 +109,7 @@ public class Board {
         // King: continue
         // Pawn, Knight: (1) + (2)
         // Rook, Bishop, Queen: (1) + (2) + (3) + (4)
-        for (var opp : game.oppPieces) {
+        for (var opp : game.getOppPieces()) {
             if (opp.type == Pieces.KING) {
                 continue;
             }
@@ -170,7 +170,7 @@ public class Board {
     // Pawn when moving forward/ capturing
     public boolean willHitOpponentPiece(Position start, int x, int y) {
         var newPos = new Position(start.getX() + x, start.getY() + y, null);
-        for (var opp : game.oppPieces) {
+        for (var opp : game.getOppPieces()) {
             if (Position.samePos(newPos, opp.pos)) {
                 return true;
             }
@@ -183,20 +183,21 @@ public class Board {
         return willBeOOB(start, x, y) || willHitOwnPiece(start, x, y);
     }
 
+    // see whether the King can make a castling move
     // REQUIRES: not under check
     public ArrayList<Move> makeCastlingMove(Position start) {
         var moves = new ArrayList<Move>();
         if (start.piece.type == Pieces.KING && start.piece.turnFirstMoved == -1) {
             Piece king = start.piece;
-            for (var own : game.ownPieces) {
+            for (var own : game.getOwnPieces()) {
                 if (own.type == Pieces.ROOK && own.turnFirstMoved == -1) {
                     // both King and Rook must not have moved
                     var rook = own;
                     var path = rook.getAttackPath(king.pos); // hacky
-                    var modPath = path.subList(path.size() - 2, path.size());
+                    var kingPath = path.subList(path.size() - 2, path.size()); // hypothetical path king takes
                     var isBlocked = false;
                     var willBeChecked = false;
-                    for (var pos : modPath) {
+                    for (var pos : kingPath) {
                         var boardPos = squares[pos.getX()][pos.getY()];
                         if (boardPos.piece != null) { // the square is occupied
                             isBlocked = true;
@@ -209,7 +210,7 @@ public class Board {
                         }
                     }
                     if (!(isBlocked || willBeChecked)) {
-                        var finalPos = squares[modPath.get(0).getX()][modPath.get(0).getY()];
+                        var finalPos = squares[kingPath.get(0).getX()][kingPath.get(0).getY()];
                         moves.add(new Move(king.toString(), king.pos, finalPos, Action.CASTLE));
                     }
                 }
@@ -255,16 +256,16 @@ public class Board {
 
     // needs to be done after a move is made and before the turn changes
     public boolean isCheck() {
-        // loop through each of game.ownPieces to see if it attacks the opponent's King
+        // loop through each of game.getOwnPieces() to see if it attacks the opponent's King
         Position KingPos = null;
-        for (var opp : game.oppPieces) {
+        for (var opp : game.getOppPieces()) {
             if (opp.type == Pieces.KING) {
                 KingPos = opp.pos;
             }
         }
 
-        // for each of game.ownPieces,
-        for (var own : game.ownPieces) {
+        // for each of game.getOwnPieces(),
+        for (var own : game.getOwnPieces()) {
             if (own.type == Pieces.KING) {
                 continue;
             }
@@ -298,6 +299,7 @@ public class Board {
         return false;
     }
 
+    // x: x-displacement, y: y-displacement
     public Move createMove(String p, Position start, int x, int y, Action a) {
         var end = squares[start.getX() + x][start.getY() + y];
         return new Move(p, start, end, a);

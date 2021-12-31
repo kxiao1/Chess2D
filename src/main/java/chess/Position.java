@@ -25,6 +25,7 @@ public class Position {
         return (pos1.getX() == pos2.getX() && pos1.getY() == pos2.getY());
     }
 
+    // x: 0-7 => a-h, y: 0-7 => 1-8, piece => piece to placed at this position
     public Position(int x, int y, Piece piece) {
         if (!Board.isValidPos(x, y)) {
             var errStr = "The position (" + x + "," + y + ") is invalid.";

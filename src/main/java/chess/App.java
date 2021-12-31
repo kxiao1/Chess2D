@@ -45,30 +45,38 @@ import java.io.File;
  */
 public class App extends Application {
 
-    final int squareSize = 50;
-    final int small = 30;
-    final int tiny = 25;
-    final int numCanCapture = 5;
-    final Font defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
-    final Font checkFont = Font.font("Serif", FontWeight.NORMAL, 14);
-    final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
-    final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
-    final String hoverStyle = "-fx-border-color: red; -fx-background-color: transparent";
-    final int buttonWidth = small * numCanCapture - 2 * tiny;
+    private final int squareSize = 50;
+    private final int small = 30;
+    private final int tiny = 25;
+    private final int numCanCapture = 5;
+    private final Font defaultFont = Font.font("Serif", FontWeight.NORMAL, 12);
+    private final Font checkFont = Font.font("Serif", FontWeight.NORMAL, 14);
+    private final Font titleFont = Font.font("Serif", FontWeight.NORMAL, 20);
+    private final String idleStyle = "-fx-border-color: transparent; -fx-background-color: transparent";
+    private final String hoverStyle = "-fx-border-color: red; -fx-background-color: transparent";
+    private final int buttonWidth = small * numCanCapture - 2 * tiny;
 
-    ArrayList<Position> highlightedPos = new ArrayList<Position>();
+    private Button startBtn;
+    private Button undoBtn;
+    private Button redoBtn;
+    private Button restartBtn;
+    private Button saveBtn;
+    private Button quitBtn;
+    private Button resignBtn;
+    private Label checkedBox;
+    private TilePane chessboard;
 
-    Game game;
-    Scene scene;
-    boolean live; // false = Read game from logs
+    private ArrayList<Position> highlightedPos = new ArrayList<Position>();
+
+    private Game game;
+    private Scene scene;
+    private boolean live; // false = Read game from logs
 
     private void makeResign() {
         game.indicateResign();
-        var resignBtn = (Button) scene.lookup("#resignBtn");
         resignBtn.setDisable(true); // cannot resign twice
-        var l = (Label) scene.lookup("#checkedBox");
-        l.setText("RESIGNED");
-        l.setVisible(true);
+        checkedBox.setText("RESIGNED");
+        checkedBox.setVisible(true);
 
         var text = game.turn.toString() + " has resigned.\nSave logs to "
                 + System.getProperty("user.dir") + "/logs.txt?";
@@ -82,12 +90,10 @@ public class App extends Application {
                 game.saveLogs();
             }
             // disable the board
-            var b = (TilePane) scene.lookup("#chessboard");
-            b.setDisable(true);
+            chessboard.setDisable(true);
 
             // prompt a restart
-            var ctrl = (Button) scene.lookup("#restartBtn");
-            ctrl.requestFocus();
+            restartBtn.requestFocus();
         }
     }
 
@@ -203,7 +209,6 @@ public class App extends Application {
         // account for checks
         var checked = game.isCheck();
 
-        var checkedBox = (Label) scene.lookup("#checkedBox");
         // assuming the move is valid, the current side is not under check
         checkedBox.setVisible(false);
         // indicate if the opponent is now under check
@@ -242,8 +247,8 @@ public class App extends Application {
                 header = "Stalemate!";
             }
 
-            var resignBtn = (Button) scene.lookup("#resignBtn");
             resignBtn.setDisable(true); // cannot resign after game has ended
+            redoBtn.setDisable(true); // cannot redo after game has ended
 
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
             alert.setHeaderText(header);
@@ -253,17 +258,29 @@ public class App extends Application {
                     game.saveLogs();
                 }
                 // disable the board
-                var b = (TilePane) scene.lookup("#chessboard");
-                b.setDisable(true);
+                chessboard.setDisable(true);
 
                 // prompt a restart
-                var ctrl = (Button) scene.lookup("#restartBtn");
-                ctrl.requestFocus();
+                restartBtn.requestFocus();
             }
         } else {
             // enable all of other player's buttons
             activatePieces(game.turn);
+            if (game.turn == Turn.BLACK && game.turnNo == 1) {
+                restartBtn.setDisable(false);
+                undoBtn.setDisable(false);
+                resignBtn.setDisable(false);
+            }
+            redoBtn.setDisable(!game.canRedo());
         }
+    }
+
+    private void makeRedo() {
+        Move toRedo = game.createRedoMove();
+        if (toRedo == null) {
+            throw new NullPointerException("There is no move to redo!");
+        }
+        makeMove(toRedo);
     }
 
     private void makeUndo() {
@@ -273,16 +290,13 @@ public class App extends Application {
 
         // if undoing from checkmate, need to reactivate the board
         if (game.isCheckmated()) {
-            var l = (Label) scene.lookup("#checkedBox");
-            l.setText("CHECKED");
-
-            var b = (TilePane) scene.lookup("#chessboard");
-            b.setDisable(false);
-            b.requestFocus();
+            checkedBox.setText("CHECKED");
+            chessboard.setDisable(false);
+            chessboard.requestFocus();
         }
 
         // the reversed undoing move
-        var toUndo = game.undoMove();
+        Move toUndo = game.createUndoMove();
         if (toUndo == null) {
             throw new NullPointerException("There is no move to undo!");
         }
@@ -312,18 +326,15 @@ public class App extends Application {
         // to ensure that the player that undid his move gets to move
         // again next, make a no-op move for the other player
         game.switchTurnNoOp();
-        makeMove(game.getNoOpKingMove());
+        makeMove(game.createNoOpKingMove());
         game.endNoOp();
 
-        var resignBtn = (Button) scene.lookup("#resignBtn");
         if (game.turnNo >= 2) {
             resignBtn.setDisable(false);
         }
 
         // cannot undo further, and there's no point in restarting
         if (game.turn == Turn.WHITE && game.turnNo == 1) {
-            var restartBtn = (Button) scene.lookup("#restartBtn");
-            var undoBtn = (Button) scene.lookup("#undoBtn");
             resignBtn.setDisable(true);
             restartBtn.setDisable(true);
             undoBtn.setDisable(true);
@@ -345,9 +356,6 @@ public class App extends Application {
             var sq = (Rectangle) sp.lookup("#" + pos.toString());
             sq.setFill(Color.DARKRED);
 
-            var restartBtn = (Button) scene.lookup("#restartBtn");
-            var undoBtn = (Button) scene.lookup("#undoBtn");
-            var resignBtn = (Button) scene.lookup("#resignBtn");
             if (pos.piece != null) {
                 // if occupied, enable the button
                 var pc = (Button) sp.lookup("#" + pos.piece.toString());
@@ -355,22 +363,12 @@ public class App extends Application {
                 pc.setOnAction(e -> {
                     game.addToLogs(move);
                     makeMove(move);
-                    if (game.turn == Turn.BLACK && game.turnNo == 1) {
-                        restartBtn.setDisable(false);
-                        undoBtn.setDisable(false);
-                        resignBtn.setDisable(false);
-                    }
                 });
             } else {
-                // if not occupied, add the pickdest event handler
+                // if not occupied, add the event handler to the selected square
                 sq.setOnMouseClicked(e -> {
                     game.addToLogs(move);
                     makeMove(move);
-                    if (game.turn == Turn.BLACK && game.turnNo == 1) {
-                        restartBtn.setDisable(false);
-                        undoBtn.setDisable(false);
-                        resignBtn.setDisable(false);
-                    }
                 });
             }
         }
@@ -400,7 +398,7 @@ public class App extends Application {
     }
 
     private void activatePieces(Turn turn) {
-        var pieces = game.ownPieces;
+        var pieces = game.getOwnPieces();
         for (var p : pieces) {
             var sp = (StackPane) scene.lookup("#" + p.pos.toString() + "_sp");
             var pc = (Button) sp.lookup("#" + p.toString());
@@ -411,7 +409,7 @@ public class App extends Application {
     }
 
     private void deactivatePieces(Turn turn) {
-        var pieces = game.ownPieces;
+        var pieces = game.getOwnPieces();
         for (var p : pieces) {
             var sp = (StackPane) scene.lookup("#" + p.pos.toString() + "_sp");
             var pc = (Button) sp.lookup("#" + p.toString());
@@ -514,13 +512,6 @@ public class App extends Application {
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             Platform.exit();
-            // // disable the board
-            // var b = (TilePane) scene.lookup("#chessboard");
-            // b.setDisable(true);
-
-            // // prompt a restart
-            // var ctrl = (Button) scene.lookup("#restartBtn");
-            // ctrl.requestFocus();
         }
     }
 
@@ -533,14 +524,15 @@ public class App extends Application {
         return game.readFile(f);
     }
 
-    private void initUI(Stage stage, boolean shouldStartGame, boolean l) {
-        System.out.println(l ? "LIVE Mode" : "READ Mode");
+    private void initUI(Stage stage, boolean shouldStartGame,
+            boolean liveGame) {
+        System.out.println(liveGame ? "LIVE Mode" : "READ Mode");
         game = new Game();
         Thread.setDefaultUncaughtExceptionHandler(
                 (t, e) -> Platform.runLater(() -> showErrorDialog(t, e)));
         // https://stackoverflow.com/questions/25145956/how-can-i-create-a-default-exception-handler-that-uses-javafx
 
-        live = l;
+        live = liveGame;
         // bottom
         var javaVersion = System.getProperty("java.version");
         var javafxVersion = System.getProperty("javafx.version");
@@ -577,14 +569,14 @@ public class App extends Application {
         title.setFont(titleFont);
         title.setId("titleText");
 
-        var checkedBox = new Label("CHECKED");
+        checkedBox = new Label("CHECKED");
         checkedBox.setFont(checkFont);
         checkedBox.setTextFill(Color.RED);
         checkedBox.setId("checkedBox");
         checkedBox.setVisible(false); // by default this text should be
                                       // invisible
 
-        var resignBtn = new Button("Resign");
+        resignBtn = new Button("Resign");
         resignBtn.setOnAction(e -> makeResign());
         resignBtn.setId("resignBtn");
         resignBtn.setDisable(true); // cannot resign before starting a game
@@ -613,7 +605,7 @@ public class App extends Application {
         var toggles = new HBox(5, tLive, tRead);
         toggles.setAlignment(Pos.CENTER);
 
-        var startBtn = new Button("Start");
+        startBtn = new Button("Start");
         if (live) {
             startBtn.setOnAction(e -> {
                 var t = (Label) Toolbar.lookup("#titleText");
@@ -638,13 +630,13 @@ public class App extends Application {
         }
         startBtn.setMaxWidth(buttonWidth);
 
-        var undoBtn = new Button(live ? "Undo" : "Prev");
+        undoBtn = new Button(live ? "Undo" : "Prev");
         undoBtn.setId("undoBtn");
         undoBtn.setOnAction(e -> makeUndo());
         undoBtn.setDisable(true);
         undoBtn.setMaxWidth(buttonWidth);
 
-        var restartBtn = new Button("Restart");
+        restartBtn = new Button("Restart");
         restartBtn.setId("restartBtn");
         restartBtn.setOnAction(e -> {
             initUI(stage, true, live);
@@ -652,7 +644,7 @@ public class App extends Application {
         restartBtn.setDisable(true);
         restartBtn.setMaxWidth(buttonWidth);
 
-        var saveBtn = new Button("Save");
+        saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
             var text = "Save logs to " + System.getProperty("user.dir")
                     + "/logs.txt?\n" + "This will overwrite any existing file.";
@@ -665,13 +657,12 @@ public class App extends Application {
         });
         saveBtn.setMaxWidth(buttonWidth);
 
-        var redoBtn = new Button(live ? "Redo" : "Next");
-        redoBtn.setOnAction(e -> {
-            System.out.println("To be Implemented");
-        });
+        redoBtn = new Button(live ? "Redo" : "Next");
+        redoBtn.setOnAction(e -> makeRedo());
+        redoBtn.setDisable(live); // live = cannot redo from first move
         redoBtn.setMaxWidth(buttonWidth);
 
-        var quitBtn = new Button("Quit");
+        quitBtn = new Button("Quit");
         quitBtn.setOnAction(e -> {
             var text = "Remember to save before quitting!";
             var alert = new Alert(Alert.AlertType.CONFIRMATION, text);
@@ -701,13 +692,12 @@ public class App extends Application {
         Captured.setAlignment(Pos.CENTER);
 
         // center: chessboard
-        TilePane tile = new TilePane();
-        tile.setPrefColumns(Board.NumX);
-        tile.setId("chessboard");
-        var tChild = tile.getChildren();
-        tile.setMaxWidth((Board.NumX + 2) * squareSize);
-        tile.setMaxHeight((Board.NumY + 2) * squareSize);
-        tile.setStyle("-fx-border-color: black");
+        chessboard = new TilePane();
+        chessboard.setPrefColumns(Board.NumX);
+        var tChild = chessboard.getChildren();
+        chessboard.setMaxWidth((Board.NumX + 2) * squareSize);
+        chessboard.setMaxHeight((Board.NumY + 2) * squareSize);
+        chessboard.setStyle("-fx-border-color: black");
 
         var squares = game.getSquares();
         for (int y = Board.NumY - 1; y >= 0; --y) {
@@ -736,7 +726,7 @@ public class App extends Application {
             centerGrid.add(lab, 0, i, 1, 1);
         }
 
-        centerGrid.add(tile, 1, 1, Board.NumX, Board.NumY);
+        centerGrid.add(chessboard, 1, 1, Board.NumX, Board.NumY);
 
         for (int i = 1; i < Board.NumY + 1; ++i) {
             var text = new Label(String.valueOf((char) (i + 96)));

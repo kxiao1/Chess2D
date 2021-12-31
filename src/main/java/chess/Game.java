@@ -17,18 +17,16 @@ enum Turn {
 class Game {
     Turn turn;
     int turnNo;
-    private ArrayList<String> logs; // what user does in this session (verbose)
-    private ArrayList<String> refLogs; // what is read in (need not be verbose)
-    private boolean logsVerbose; // TODO: parse logs differently
+    private ArrayList<String> logs;
 
-    private ArrayList<Piece> whitePieces;
-    private ArrayList<Piece> blackPieces;
-    ArrayList<Piece> ownPieces;
-    ArrayList<Piece> oppPieces;
-    private ArrayList<Piece> capturedBlack;
-    private ArrayList<Piece> capturedWhite;
-    private ArrayList<Piece> promotedWhite;
-    private ArrayList<Piece> promotedBlack;
+    private ArrayList<Piece> whitePieces = new ArrayList<Piece>();
+    private ArrayList<Piece> blackPieces = new ArrayList<Piece>();
+    private ArrayList<Piece> ownPieces = whitePieces;
+    private ArrayList<Piece> oppPieces = blackPieces;
+    private ArrayList<Piece> capturedBlack = new ArrayList<Piece>();
+    private ArrayList<Piece> capturedWhite = new ArrayList<Piece>();
+    private ArrayList<Piece> promotedWhite = new ArrayList<Piece>();
+    private ArrayList<Piece> promotedBlack = new ArrayList<Piece>();
 
     private Move uncastleKingMove;
     private Piece capturedPieceToRestore;
@@ -44,25 +42,6 @@ class Game {
         turn = Turn.WHITE;
         turnNo = 1;
         logs = new ArrayList<String>();
-
-        blackPieces = new ArrayList<Piece>();
-        whitePieces = new ArrayList<Piece>();
-        ownPieces = whitePieces;
-        oppPieces = blackPieces;
-        capturedBlack = new ArrayList<Piece>();
-        capturedWhite = new ArrayList<Piece>();
-        promotedWhite = new ArrayList<Piece>();
-        promotedBlack = new ArrayList<Piece>();
-
-        uncastleKingMove = null;
-        capturedPieceToRestore = null;
-        logsVerbose = false;
-        isChecked = false;
-        isCheckmated = false;
-        isStalemate = false;
-        isResigned = false;
-        isBeingUndone = false;
-        isNoOp = false;
 
         var squares = new Position[Board.NumX][];
         chessBoard = new Board(squares, this);
@@ -107,6 +86,8 @@ class Game {
         }
     }
 
+    /* Set state */
+
     void switchTurn() {
         if (turn == Turn.BLACK) {
             turnNo++;
@@ -115,6 +96,28 @@ class Game {
         ownPieces = turn == Turn.WHITE ? whitePieces : blackPieces;
         oppPieces = turn == Turn.WHITE ? blackPieces : whitePieces;
     }
+
+    // Account for the extra turn increment after NOP move
+    void switchTurnNoOp() {
+        turnNo--;
+    }
+
+    // end no-op sequence
+    void endNoOp() {
+        isNoOp = false;
+    }
+
+    void indicateResign() {
+        isResigned = true;
+    }
+
+    void indicateCheckmate() {
+        var lastEntry = logs.remove(logs.size() - 1);
+        lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# ";
+        logs.add(lastEntry);
+    }
+
+    /****************************** Getters **********************************/
 
     // Return true if the current player has moves to make
     boolean getAllMoves() {
@@ -148,9 +151,15 @@ class Game {
         return chessBoard.getSquares();
     }
 
-    String printBoard() {
-        return chessBoard.toString();
+    ArrayList<Piece> getOwnPieces() {
+        return ownPieces;
     }
+
+    ArrayList<Piece> getOppPieces() {
+        return oppPieces;
+    }
+
+    /* Boolean checks */
 
     boolean isCheck() {
         if (isBeingUndone) {
@@ -168,47 +177,30 @@ class Game {
         return isCheckmated;
     }
 
-    // true = cannot redo further
-    boolean isLastMove() {
-        var l = refLogs == null ? logs : refLogs;
-        if (l.size() < turnNo) {
-            return true;
+    boolean canRedo() {
+        if (logs.size() < turnNo) {
+            return false; // we have not played this move yet
         }
-        if (l.size() > turnNo) {
-            return false;
-        }
-        if (turn == Turn.BLACK) {
-            return l.get(turnNo - 1).split(" ").length == 1;
-        }
-        return false;
+        String[] mText = logs.get(turnNo - 1).split(" ");
+        return turn == Turn.WHITE || mText.length > 1;
     }
+
+    /*************************** Manipulate logs *****************************/
 
     void addToLogs(Move m) {
         var mName = m.toString();
         if (turn == Turn.WHITE) {
-            if (logs.size() > turnNo - 1) { // truncate existing log
-                logs = new ArrayList<String>(logs.subList(0, turnNo - 1));
-            }
+            // truncate existing log
+            logs = new ArrayList<String>(logs.subList(0, turnNo - 1));
             var newEntry = mName + " ";
             logs.add(newEntry);
         } else {
-            if (logs.size() > turnNo) {
-                logs = new ArrayList<String>(logs.subList(0, turnNo));
-            }
+            // truncate existing log
+            logs = new ArrayList<String>(logs.subList(0, turnNo));
             var currEntry = logs.remove(logs.size() - 1);
             var appendedEntry = currEntry + mName + " ";
             logs.add(appendedEntry);
         }
-    }
-
-    void indicateResign() {
-        isResigned = true;
-    }
-
-    void indicateCheckmate() {
-        var lastEntry = logs.remove(logs.size() - 1);
-        lastEntry = lastEntry.substring(0, lastEntry.length() - 2) + "# ";
-        logs.add(lastEntry);
     }
 
     void saveLogs() {
@@ -247,17 +239,15 @@ class Game {
             logs = new ArrayList<String>();
             String log_string;
             if (firstLine.contains("Own")) {
-                logsVerbose = true;
                 System.out.println("Verbose Logs");
             } else {
-                logsVerbose = false;
-                System.out.println("PGN Logs");
+                throw new IllegalArgumentException(
+                        "PGN logs not supported at this time.");
             }
             for (log_string = logReader.readLine(); log_string
                     .contains("["); log_string = logReader.readLine()) {
                 System.out.println(log_string);
             }
-            refLogs = new ArrayList<String>();
             String buff = "";
             int count = 0;
             while ((log_string = logReader.readLine()) != null) {
@@ -275,37 +265,37 @@ class Game {
                     if (count == 0) {
                         buff = str + " ";
                     } else {
-                        refLogs.add(buff + str + " ");
+                        logs.add(buff + str + " ");
                     }
                     count = (count + 1) % 2;
                 }
             }
             if (count == 1) {
-                refLogs.add(buff);
+                logs.add(buff);
             }
-            for (var check : refLogs) {
+            for (var check : logs) {
                 System.out.println(check);
             }
-            if (refLogs.size() == 0) {
+            if (logs.size() == 0) {
                 System.out.println("No logs provided.");
                 return false;
             }
             return true;
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             System.out.println(e);
             return false;
         }
     }
 
-    // Account for the extra turn increment after NOP move
-    void switchTurnNoOp() {
-        turnNo--;
+    Piece getCapturedPiece() {
+        return capturedPieceToRestore;
     }
 
-    // end no-op sequence
-    void endNoOp() {
-        isNoOp = false;
+    Move getUncastleKingMove() {
+        return uncastleKingMove;
     }
+
+    /********************** Undo/ Redo-related logic *************************/
 
     void resetPieceStateUndo(Piece p) {
         // put the captured piece (if any) back to the board
@@ -327,16 +317,8 @@ class Game {
         isNoOp = true;
     }
 
-    Piece getCapturedPiece() {
-        return capturedPieceToRestore;
-    }
-
-    Move getUncastleKingMove() {
-        return uncastleKingMove;
-    }
-
     // Make special NOP with same starting and ending position
-    Move getNoOpKingMove() {
+    Move createNoOpKingMove() {
         Piece king = null;
         Position kingPos = null;
         for (var own : ownPieces) {
@@ -348,22 +330,77 @@ class Game {
         return new Move(king.toString(), kingPos, kingPos, Action.NONE);
     }
 
-    Move redoMove() {
-        String mText;
-        if (refLogs != null) {
-            // use ref logs, remember to generate actual logs as we go
-            mText = refLogs.get(turnNo + (turn == Turn.WHITE ? 0 : 1) - 1);
-        } else {
-            // use actual logs
-            mText = logs.get(turnNo + (turn == Turn.WHITE ? 0 : 1) - 1);
+    Move createRedoMove() {
+        if (!canRedo()) {
+            return null;
         }
-        mText = mText.split(" ")[turn == Turn.WHITE ? 1 : 0]; // white -> black
+        String mText = logs.get(turnNo - 1).split(" ")[turn == Turn.WHITE ? 0
+                : 1];
+
         // basically the same as undoing, without the 'un's
-        // remember to account for checkmates/ stalements
-        return null;
+
+        // remove additional character from a check(mate)
+        if (mText.charAt(mText.length() - 1) == '+'
+                || mText.charAt(mText.length() - 1) == '#') {
+            mText = mText.substring(0, mText.length() - 1);
+        }
+
+        // handle castling
+        if (mText.equals("O-O-O") || mText.equals("O-O")) {
+
+            Position KingPosStart = null;
+            for (var own : ownPieces) {
+                if (own.type == Pieces.KING) {
+                    KingPosStart = own.pos;
+                }
+            }
+            var king = KingPosStart.piece;
+
+            // castle move is king move
+            if (mText.equals("O-O-O")) {
+                return chessBoard.createMove(king.toString(), KingPosStart, -2,
+                        0, Action.CASTLE);
+            }
+            if (mText.equals("O-O")) {
+                return chessBoard.createMove(king.toString(), KingPosStart, 2,
+                        0, Action.CASTLE);
+            }
+        }
+
+        var isPromote = false;
+        if (mText.substring(mText.length() - 2).equals("=Q")) {
+            mText = mText.substring(0, mText.length() - 2);
+            isPromote = true;
+        }
+
+        var endPosStr = mText.substring(mText.length() - 2);
+        var endPos = chessBoard.getSquares()[Position
+                .getXFromString(endPosStr)][Position.getYFromString(endPosStr)];
+        mText = mText.substring(0, mText.length() - 2);
+
+        boolean isCapture = false;
+        if (mText.charAt(mText.length() - 1) == 'x') {
+            mText = mText.substring(0, mText.length() - 1);
+            isCapture = true;
+        }
+
+        var startPosStr = mText.substring(mText.length() - 2);
+        var startPos = chessBoard.getSquares()[Position.getXFromString(
+                startPosStr)][Position.getYFromString(startPosStr)];
+
+        var piece = startPos.piece;
+        if (isPromote) {
+            return new Move(piece.toString(), startPos, endPos, Action.PROMOTE);
+        }
+        if (piece.type == Pieces.PAWN && isCapture && endPos.piece == null) {
+            return new Move(piece.toString(), startPos, endPos,
+                    Action.ENPASSANT);
+        }
+
+        return new Move(piece.toString(), startPos, endPos, Action.NONE);
     }
 
-    Move undoMove() {
+    Move createUndoMove() {
         if (logs.size() == 0) {
             // cannot undo from first move
             return null;
@@ -380,32 +417,10 @@ class Game {
         turnNo--;
 
         // use string parsing
-        String mText;
-        if (refLogs != null) {
-            // use ref logs, remember to generate actual logs as we go
-            mText = refLogs.get(turnNo - 1);
-        } else {
-            // use actual logs
-            mText = logs.get(turnNo - 1);
-        }
-        mText = mText.split(" ")[turn == Turn.WHITE ? 0 : 1]; // white -> black
+        String mText = logs.get(turnNo - 1).split(" ")[turn == Turn.WHITE ? 0
+                : 1];
 
-        if (isCheckmated) {
-            isCheckmated = false;
-            // mText = mText.substring(0, mText.length() - 4); // " 1-0"
-        }
-
-        if (isStalemate) {
-            isStalemate = false;
-            // mText = mText.substring(0, mText.length() - 8); // " 1/2-1/2"
-        }
-
-        if (isResigned) {
-            isResigned = false;
-        }
-
-        // // strip off trailing space
-        // mText = mText.substring(0, mText.length() - 1);
+        isCheckmated = isStalemate = isResigned = false;
 
         // remove additional character from a check(mate)
         if (mText.charAt(mText.length() - 1) == '+'
@@ -414,17 +429,10 @@ class Game {
         }
         System.out.println("Move to undo: '" + mText + "'");
 
-        // last move was castling: unmove King manually here and return rook
-        // move
+        // last move was castle: unmove King manually here and return rook move
         // the app will process the rook move and render the reverted King move
-        int isCastle = 0;
-        if (mText.equals("O-O-O")) {
-            isCastle = 2;
-        }
-        if (mText.equals("O-O")) {
-            isCastle = 1;
-        }
-        if (isCastle > 0) {
+
+        if (mText.equals("O-O-O") || mText.equals("O-O")) {
             Position KingPosEnd = null;
             for (var own : ownPieces) {
                 if (own.type == Pieces.KING) {
@@ -450,7 +458,7 @@ class Game {
             // return rook Move
             Position rookPosEnd = null;
             Move rookMove = null;
-            if (isCastle == 1) { // O-O
+            if (mText.equals("O-O")) {
                 rookPosEnd = chessBoard.getSquares()[5][KingPosEnd.getY()];
                 rookMove = chessBoard.createMove(rookPosEnd.piece.toString(),
                         rookPosEnd, 2, 0, Action.UNCASTLE);
@@ -530,6 +538,8 @@ class Game {
         }
         return new Move(piece.toString(), endPos, startPos, Action.NONE);
     }
+
+    /***************************** Regular moves ******************************/
 
     // Updates state and returns captured piece if any
     Piece makeMoveAndCapture(Move m) {
@@ -632,5 +642,11 @@ class Game {
 
         // return captured piece
         return pawn;
+    }
+
+    /******************************* Debugging *******************************/
+
+    String printBoard() {
+        return chessBoard.toString();
     }
 }
